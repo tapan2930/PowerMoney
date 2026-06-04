@@ -1,0 +1,409 @@
+import { CustomAlert } from '@/components/feedback/CustomAlert';
+import { Button, Card, SelectField, TextInput } from '@/components/ui';
+import { db } from '@/db';
+import { accounts, budgets, chatMessages, goals, settings, transactions } from '@/db/schema';
+import { seedDatabase } from '@/db/seed';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { ModelTier, useAppStore } from '@/stores/useAppStore';
+import { restoreBackupFromCloud, uploadBackupToCloud } from '@/utils/backup';
+import { Haptics } from '@/utils/haptics';
+import { Ionicons } from '@expo/vector-icons';
+import { eq, sql } from 'drizzle-orm';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export default function PreferencesScreen() {
+  const { colors } = useAppTheme();
+
+  const {
+    userName,
+    currency,
+    theme,
+    llmModelTier,
+    setTheme,
+    setProfile,
+    setLlmModelTier,
+    setLlmStatus,
+    setIsOnboarded,
+    resetStore,
+  } = useAppStore();
+
+  const [editName, setEditName] = useState(userName);
+  const [selectedCurrency, setSelectedCurrency] = useState(currency);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const currencyOptions = [
+    { key: 'USD', label: 'USD ($)', icon: 'logo-usd' },
+    { key: 'EUR', label: 'EUR (€)', icon: 'logo-euro' },
+    { key: 'GBP', label: 'GBP (£)', icon: 'logo-pound' },
+    { key: 'INR', label: 'INR (₹)', icon: 'cash-outline' },
+    { key: 'JPY', label: 'JPY (¥)', icon: 'cash-outline' },
+    { key: 'CAD', label: 'CAD ($)', icon: 'cash-outline' },
+    { key: 'AUD', label: 'AUD ($)', icon: 'cash-outline' },
+  ];
+
+  const handleCloudBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      await uploadBackupToCloud();
+      Haptics.notification('success');
+      CustomAlert.alert('Backup Complete', 'Your database was successfully copied to cloud storage.');
+    } catch (e: any) {
+      Haptics.notification('error');
+      CustomAlert.alert('Backup Failed', e.message || 'An error occurred.');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleCloudRestore = async () => {
+    CustomAlert.alert(
+      'Restore From Cloud',
+      'This will replace your current local database with the backup saved on your cloud storage.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          style: 'destructive',
+          onPress: async () => {
+            setIsRestoring(true);
+            try {
+              await restoreBackupFromCloud();
+              Haptics.notification('success');
+              CustomAlert.alert(
+                'Success',
+                'Backup restored successfully. Please restart the app to apply all updates.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      resetStore();
+                      setIsOnboarded(false);
+                    },
+                  },
+                ]
+              );
+            } catch (e: any) {
+              Haptics.notification('error');
+              CustomAlert.alert('Restore Failed', e.message || 'No backup was found or restored.');
+            } finally {
+              setIsRestoring(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      // Update database settings table
+      await db.insert(settings).values([
+        { key: 'user_name', value: editName },
+        { key: 'currency', value: selectedCurrency },
+      ]).onConflictDoUpdate({
+        target: settings.key,
+        set: { value: sql`excluded.value` },
+      });
+
+      setProfile(editName, selectedCurrency);
+      Haptics.notification('success');
+      CustomAlert.alert('Success', 'Profile settings updated successfully!');
+    } catch (e) {
+      Haptics.notification('error');
+      console.error('Error saving profile settings:', e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleModelChange = async (tier: ModelTier) => {
+    try {
+      await db.update(settings).set({ value: tier || 'none' }).where(eq(settings.key, 'llm_tier'));
+      setLlmModelTier(tier);
+      setLlmStatus(tier ? 'not_downloaded' : 'idle');
+      Haptics.impact('medium');
+      CustomAlert.alert('AI Settings Updated', `Offline model tier changed to: ${tier || 'None'}`);
+    } catch (e) {
+      console.error('Error changing model tier:', e);
+    }
+  };
+
+  const handleThemeChange = async (pref: 'light' | 'dark' | 'system') => {
+    try {
+      await db.update(settings).set({ value: pref }).where(eq(settings.key, 'theme'));
+      setTheme(pref);
+      Haptics.impact('light');
+    } catch (e) {
+      console.error('Error updating theme settings:', e);
+    }
+  };
+
+  const handleResetWipe = () => {
+    CustomAlert.alert(
+      'Wipe All App Data',
+      'This will permanently delete all your accounts, transaction logs, budgets, goals, and settings. This action is irreversible.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Wipe Everything',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Delete all records from tables
+              await db.delete(transactions);
+              await db.delete(accounts);
+              await db.delete(budgets);
+              await db.delete(goals);
+              await db.delete(chatMessages);
+              await db.delete(settings);
+
+              // Re-seed default tables and reset stores
+              await seedDatabase();
+              resetStore();
+              setIsOnboarded(false); // Redirects to Onboarding
+            } catch (e) {
+              console.error('Error resetting app database:', e);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={styles.header}>
+        <Button
+          label=""
+          onPress={() => router.back()}
+          variant="outline"
+          size="sm"
+          leftIcon={<Ionicons name="arrow-back" size={20} color={colors.text} />}
+          style={styles.backBtn}
+        />
+        <Text style={[styles.title, { color: colors.text }]}>Settings & Security</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Profile Card */}
+        <Card style={styles.sectionCard} padding={20}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile & Locale</Text>
+
+          <TextInput
+            label="Profile Name"
+            value={editName}
+            onChangeText={setEditName}
+            placeholder="Edit name"
+          />
+
+          <SelectField
+            label="Default Currency"
+            value={selectedCurrency}
+            options={currencyOptions}
+            onSelect={setSelectedCurrency}
+            placeholder="Select default currency"
+          />
+
+          <Button
+            label="Save Profile Changes"
+            onPress={handleSaveProfile}
+            variant="primary"
+            loading={isSaving}
+            style={styles.saveBtn}
+          />
+        </Card>
+
+        {/* Appearance Setup */}
+        <Card style={styles.sectionCard} padding={20}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Theme Customization</Text>
+          <View style={styles.themeSelectorRow}>
+            {[
+              { type: 'light', label: 'Light', icon: 'sunny-outline' },
+              { type: 'dark', label: 'Dark', icon: 'moon-outline' },
+              { type: 'system', label: 'System', icon: 'phone-portrait-outline' },
+            ].map((opt) => {
+              const isSelected = theme === opt.type;
+              return (
+                <Button
+                  key={opt.type}
+                  label={opt.label}
+                  onPress={() => handleThemeChange(opt.type as any)}
+                  variant={isSelected ? 'primary' : 'outline'}
+                  leftIcon={<Ionicons name={opt.icon as any} size={16} color={isSelected ? '#FFFFFF' : colors.textSecondary} />}
+                  size="sm"
+                  style={styles.themeBtn}
+                />
+              );
+            })}
+          </View>
+        </Card>
+
+        {/* AI Tier Setup */}
+        <Card style={styles.sectionCard} padding={20}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Offline AI Engine</Text>
+          <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
+            Change your on-device LLM model size weights. Swapping sizes resets downloaded statuses.
+          </Text>
+
+          <View style={styles.modelSelectorList}>
+            {[
+              { tier: 'lite', label: 'Lite SmolLM (~70 MB)' },
+              { tier: 'standard', label: 'Standard Qwen (~350 MB)' },
+              { tier: 'pro', label: 'Pro Phi-4 (~2.2 GB)' },
+              { tier: 'ultra', label: 'Ultra Gemma 4 (~1 GB)' },
+              { tier: null, label: 'Deactivate / Rules only' },
+            ].map((opt) => {
+              const isSelected = llmModelTier === opt.tier;
+              return (
+                <Button
+                  key={opt.label}
+                  label={opt.label}
+                  onPress={() => handleModelChange(opt.tier)}
+                  variant={isSelected ? 'primary' : 'outline'}
+                  size="sm"
+                  style={styles.modelBtn}
+                />
+              );
+            })}
+          </View>
+        </Card>
+
+        {/* Backup Settings */}
+        <Card style={styles.sectionCard} padding={20}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Backup & Cloud Sync</Text>
+          <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
+            Export your database records directly to iCloud or Google Drive. Backups can be restored to keep your devices in sync.
+          </Text>
+
+          <View style={styles.backupActions}>
+            <Button
+              label="Backup to Cloud"
+              onPress={handleCloudBackup}
+              variant="outline"
+              size="sm"
+              loading={isBackingUp}
+              leftIcon={<Ionicons name="cloud-upload-outline" size={18} color={colors.primary} />}
+              style={styles.backupBtn}
+            />
+            <Button
+              label="Restore from Cloud"
+              onPress={handleCloudRestore}
+              variant="outline"
+              size="sm"
+              loading={isRestoring}
+              leftIcon={<Ionicons name="cloud-download-outline" size={18} color={colors.secondary} />}
+              style={styles.backupBtn}
+            />
+          </View>
+        </Card>
+
+        {/* Reset settings */}
+        <View style={styles.dangerZone}>
+          <Button
+            label="Wipe Database & Reset App"
+            onPress={handleResetWipe}
+            variant="danger"
+            size="md"
+            leftIcon={<Ionicons name="trash" size={18} color="#FFFFFF" />}
+            style={styles.wipeBtn}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  backBtn: {
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  scrollContent: {
+    paddingBottom: 100,
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  sectionCard: {
+    marginVertical: 0,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    width: '100%',
+    marginBottom: 16,
+  },
+  optionButton: {
+    flexGrow: 1,
+    minWidth: 80,
+  },
+  saveBtn: {
+    marginTop: 16,
+  },
+  themeSelectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  themeBtn: {
+    flex: 1,
+  },
+  descriptionText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  modelSelectorList: {
+    gap: 8,
+  },
+  modelBtn: {
+    alignSelf: 'stretch',
+  },
+  backupActions: {
+    marginTop: 8,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  backupBtn: {
+    flex: 1,
+  },
+  dangerZone: {
+    marginTop: 12,
+  },
+  wipeBtn: {
+    borderRadius: 16,
+  },
+});

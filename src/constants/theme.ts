@@ -3,24 +3,38 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-import '@/global.css';
-
 import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
+    primary: '#7D73E6',
+    primaryLight: '#A39CFC',
+    secondary: '#00B894', // Emerald (income)
+    danger: '#FF6B6B',    // Coral (expense)
+    warning: '#FDCB6E',   // Amber
+    background: '#F8F9FE',
+    surface: '#FFFFFF',
+    surfaceSecondary: '#F0F0F3',
+    text: '#2D3436',
+    textSecondary: '#636E72',
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    border: '#E2E8F0',
   },
   dark: {
-    text: '#ffffff',
+    primary: '#9B94FB',
+    primaryLight: '#7D73E6',
+    secondary: '#55EFC4', // Lighter Emerald
+    danger: '#FF7675',    // Lighter Coral
+    warning: '#FFEAA7',   // Lighter Amber
     background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    surface: '#0E0E11',
+    surfaceSecondary: '#16161A',
+    text: '#F5F6FA',
+    textSecondary: '#A0A0A5',
+    backgroundElement: '#1B1B20',
+    backgroundSelected: '#25252B',
+    border: '#1A1A1E',
   },
 } as const;
 

@@ -61,7 +61,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "db:generate": "drizzle-kit generate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "apk:debug": "cd android && ./gradlew assembleDebug && cd ..",
+    "apk:release": "cd android && ./gradlew assembleRelease && cd .."
   },
   "private": true
 }

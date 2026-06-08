@@ -1,12 +1,15 @@
 import { AmountDisplay, Button, Card, GradientCard, ProgressRing } from '@/components/ui';
-import { getBudgetsWithSpent, getFinancialSummary, getRecentTransactions } from '@/db/queries/financials';
 import { useAppStore } from '@/stores/useAppStore';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, Text, View, Platform, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { styles } from './index.styles';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { useDashboardData } from '@/features/dashboard/hooks/useDashboardData';
+import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 
 interface TransactionItem {
   id: string;
@@ -22,53 +25,48 @@ interface TransactionItem {
   accountName: string | null;
 }
 
-import { useAppTheme } from '@/hooks/useAppTheme';
 
 export default function DashboardScreen() {
   const { colors, isDark } = useAppTheme();
-
   const { userName, currency } = useAppStore();
 
-  const [summary, setSummary] = useState({ netBalance: 0, totalIncome: 0, totalExpense: 0, savingsRate: 0 });
-  const [recentTransactions, setRecentTransactions] = useState<TransactionItem[]>([]);
-  const [activeBudgets, setActiveBudgets] = useState<any[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    selectedMonth,
+    setSelectedMonth,
+    summary,
+    recentTransactions,
+    activeBudgets,
+    refreshing,
+    loadData,
+    handlePrevMonth,
+    handleNextMonth,
+    handleRefresh,
+  } = useDashboardData();
 
-  const loadData = async () => {
-    try {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-      const formatLocalDate = (date: Date) => {
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-      };
+  const now = new Date();
+  const isCurrentMonth =
+    selectedMonth.getFullYear() === now.getFullYear() &&
+    selectedMonth.getMonth() === now.getMonth();
 
-      const summaryData = await getFinancialSummary(formatLocalDate(startOfMonth), formatLocalDate(endOfMonth));
-      const transactionsData = await getRecentTransactions(5);
-      const budgetsData = await getBudgetsWithSpent();
-
-      setSummary(summaryData);
-      setRecentTransactions(transactionsData as any[]);
-      setActiveBudgets(budgetsData);
-    } catch (e) {
-      console.error('Error loading dashboard data:', e);
-    }
+  const handleResetMonth = () => {
+    setSelectedMonth(new Date());
   };
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [])
+      loadData(selectedMonth);
+    }, [loadData, selectedMonth])
   );
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+  const handleDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (date && event.type !== 'dismissed') {
+      setSelectedMonth(date);
+    }
   };
 
   const getGreeting = () => {
@@ -82,7 +80,7 @@ export default function DashboardScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
         {/* Header Block */}
@@ -126,6 +124,58 @@ export default function DashboardScreen() {
             </View>
           </View>
         </GradientCard>
+
+        {/* Month Selector Row */}
+        <View style={styles.monthSelectorRow}>
+          <Pressable
+            onPress={handlePrevMonth}
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
+            style={({ pressed }) => [
+              styles.monthArrow,
+              { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
+          </Pressable>
+
+          <View style={styles.monthTextWrapper}>
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Select month: ${selectedMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`}
+              style={styles.monthTextContainer}
+            >
+              <Text style={[styles.monthLabelText, { color: colors.text }]}>
+                {selectedMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+              </Text>
+              <Ionicons name="calendar-outline" size={14} color={colors.primary} style={styles.calendarIcon} />
+            </Pressable>
+
+            {!isCurrentMonth && (
+              <Pressable
+                onPress={handleResetMonth}
+                style={[styles.resetButton, { backgroundColor: colors.primary + '15' }]}
+                accessibilityRole="button"
+                accessibilityLabel="Reset to current month"
+              >
+                <Ionicons name="refresh" size={14} color={colors.primary} />
+              </Pressable>
+            )}
+          </View>
+
+          <Pressable
+            onPress={handleNextMonth}
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
+            style={({ pressed }) => [
+              styles.monthArrow,
+              { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Ionicons name="chevron-forward" size={18} color={colors.text} />
+          </Pressable>
+        </View>
 
         {/* Quick Stats Row */}
         <View style={styles.statsRow}>
@@ -245,217 +295,45 @@ export default function DashboardScreen() {
           )}
         </View>
       </ScrollView>
+
+      {showDatePicker && Platform.OS === 'ios' && (
+        <Modal
+          visible={showDatePicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.pickerModalContainer}>
+            <Pressable style={styles.overlay} onPress={() => setShowDatePicker(false)} />
+            <View style={[styles.pickerModalContent, { backgroundColor: colors.background }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Select Month</Text>
+                <Pressable onPress={() => setShowDatePicker(false)} style={styles.doneButton}>
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Done</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={selectedMonth}
+                mode="date"
+                display="inline"
+                onChange={handleDateChange}
+                themeVariant={isDark ? 'dark' : 'light'}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {showDatePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={selectedMonth}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 80,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    marginBottom: 20,
-  },
-  greeting: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-  },
-  heroCard: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-  },
-  heroLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.75)',
-    textTransform: 'uppercase',
-  },
-  heroAmount: {
-    color: '#FFFFFF',
-    fontSize: 36,
-    fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  heroFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    paddingTop: 16,
-  },
-  heroFooterItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  heroFooterTextCol: {
-    marginLeft: 8,
-  },
-  heroFooterLabel: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  heroFooterVal: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 1,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    marginVertical: 0,
-  },
-  statIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  statIconBg: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  statLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  statAmount: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  sectionContainer: {
-    marginBottom: 0,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  horizontalList: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  budgetCard: {
-    width: 200,
-    marginVertical: 0,
-    marginBottom: 24
-  },
-  budgetCardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  budgetTextCol: {
-    flex: 1,
-    marginRight: 8,
-  },
-  budgetName: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  budgetDetail: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  limitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  budgetAmountText: {
-    fontSize: 11,
-  },
-  budgetLimitAmount: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  emptyCard: {
-    alignItems: 'center',
-    marginHorizontal: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginTop: 12,
-  },
-  emptyCta: {
-    marginTop: 16,
-    width: '100%',
-  },
-  txRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginVertical: 4,
-  },
-  txLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  txIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  txTextCol: {
-    flex: 1,
-    marginRight: 12,
-  },
-  txMerchant: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  txDate: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  txAmount: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});
+

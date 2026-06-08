@@ -122,6 +122,9 @@ export const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  txTextCol: {
+    flex: 1,
+  },
   txIconBg: {
     width: 40,
     height: 40,

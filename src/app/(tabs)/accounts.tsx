@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAccountsData } from '@/features/accounts/hooks/useAccountsData';
 import { useAddAccount } from '@/features/accounts/hooks/useAddAccount';
 import { useEditAccount } from '@/features/accounts/hooks/useEditAccount';
+import { useLedgerFilters } from '@/features/accounts/hooks/useLedgerFilters';
 
 // Custom sub-components
 import { AccountsHeader } from '@/features/accounts/components/AccountsHeader';
@@ -15,6 +16,7 @@ import { AccountsView } from '@/features/accounts/components/AccountsView';
 import { AddAccountModal } from '@/features/accounts/components/AddAccountModal';
 import { EditAccountModal } from '@/features/accounts/components/EditAccountModal';
 import { LedgerSection } from '@/features/accounts/components/LedgerSection';
+import { LedgerFilterBar } from '@/features/accounts/components/LedgerFilterBar';
 import { Account, TransactionItem } from '@/features/accounts/types';
 
 // Styles
@@ -25,6 +27,23 @@ export default function AccountsScreen() {
 
   // Data Fetching Hook
   const { accountsList, transactionsList, categoriesList, loadData } = useAccountsData();
+
+  // Filters State Hook
+  const {
+    searchQuery,
+    setSearchQuery,
+    dateRange,
+    setDateRange,
+    selectedAccountIds,
+    setSelectedAccountIds,
+    selectedType,
+    setSelectedType,
+    selectedCategoryIds,
+    setSelectedCategoryIds,
+    filteredTransactions,
+    activeFilterCount,
+    clearAllFilters,
+  } = useLedgerFilters(transactionsList);
 
   // Focus effect for automatic refresh
   useFocusEffect(
@@ -49,8 +68,6 @@ export default function AccountsScreen() {
     },
   });
 
-
-
   const editAccount = useEditAccount({
     account: selectedAccount,
     onSuccess: () => {
@@ -59,8 +76,6 @@ export default function AccountsScreen() {
       loadData();
     },
   });
-
-
 
   const handleAccountPress = (acc: Account) => {
     setSelectedAccount(acc);
@@ -91,9 +106,27 @@ export default function AccountsScreen() {
           viewMode={viewMode}
           onAccountPress={handleAccountPress}
         />
+        <LedgerFilterBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+          accounts={accountsList}
+          selectedAccountIds={selectedAccountIds}
+          setSelectedAccountIds={setSelectedAccountIds}
+          categories={categoriesList}
+          selectedCategoryIds={selectedCategoryIds}
+          setSelectedCategoryIds={setSelectedCategoryIds}
+          selectedType={selectedType}
+          setSelectedType={setSelectedType}
+          activeFilterCount={activeFilterCount}
+          clearAllFilters={clearAllFilters}
+        />
         <LedgerSection
-          transactionsList={transactionsList}
+          transactionsList={filteredTransactions}
           onTransactionPress={handleTransactionPress}
+          activeFilterCount={activeFilterCount}
+          onClearFilters={clearAllFilters}
         />
       </ScrollView>
 
@@ -111,8 +144,7 @@ export default function AccountsScreen() {
         account={selectedAccount}
         {...editAccount}
       />
-
-
     </SafeAreaView>
   );
 }
+

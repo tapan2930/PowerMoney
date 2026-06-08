@@ -1,154 +1,81 @@
 import { BarChart, DonutChart, LineChart } from '@/components/charts';
-import { AmountDisplay, Button, Card, ProgressBar, SegmentedControl } from '@/components/ui';
-import { db } from '@/db';
-import { categories, transactions } from '@/db/schema';
+import { AmountDisplay, Button, Card, ProgressBar, SegmentedControl, DateRangePicker } from '@/components/ui';
 import { useAppStore } from '@/stores/useAppStore';
 import { Ionicons } from '@expo/vector-icons';
-import { FlashList } from '@shopify/flash-list';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { FlashList, ListRenderItem } from '@shopify/flash-list';
+const AnyFlashList = FlashList as any;
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-interface CategorySpend {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-  total: number;
-  percentage: number;
-}
-
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useReportData, CategorySpend } from '@/features/reports/hooks/useReportData';
+
 
 export default function ReportsScreen() {
   const { colors } = useAppTheme();
   const { currency } = useAppStore();
 
-  const [timeRange, setTimeRange] = useState<'month' | 'week' | 'year'>('month');
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [totalExpense, setTotalExpense] = useState(0);
-  const [categoryBreakdown, setCategoryBreakdown] = useState<CategorySpend[]>([]);
-  const [trendData, setTrendData] = useState<{ value: number; label: string }[]>([]);
+  const {
+    timeRange,
+    setTimeRange,
+    customStart,
+    setCustomStart,
+    customEnd,
+    setCustomEnd,
+    totalIncome,
+    totalExpense,
+    categoryBreakdown,
+    trendData,
+    calculateReports,
+  } = useReportData();
 
-  const getStartDateForRange = (range: 'week' | 'month' | 'year') => {
-    const date = new Date();
-    if (range === 'week') {
-      date.setDate(date.getDate() - 7);
-    } else if (range === 'month') {
-      date.setMonth(date.getMonth() - 1);
-    } else if (range === 'year') {
-      date.setFullYear(date.getFullYear() - 1);
-    }
-    return date.toISOString().split('T')[0];
-  };
-
-  const calculateReports = async () => {
-    try {
-      const startDate = getStartDateForRange(timeRange);
-
-      // 1. Fetch total income & expenses in time range (excluding transfers)
-      const summaryResult = await db
-        .select({
-          type: transactions.type,
-          sum: sql<number>`sum(${transactions.amount})`,
-        })
-        .from(transactions)
-        .leftJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(
-          and(
-            gte(transactions.date, startDate),
-            sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
-          )
-        )
-        .groupBy(transactions.type);
-
-      let income = 0;
-      let expense = 0;
-
-      summaryResult.forEach((row) => {
-        if (row.type === 'income') income = row.sum ?? 0;
-        if (row.type === 'expense') expense = row.sum ?? 0;
-      });
-
-      setTotalIncome(income);
-      setTotalExpense(expense);
-
-      // 2. Fetch category wise spending in time range (excluding transfers)
-      const categoryRows = await db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          color: categories.color,
-          icon: categories.icon,
-          total: sql<number>`sum(${transactions.amount})`,
-        })
-        .from(transactions)
-        .innerJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(
-          and(
-            eq(transactions.type, 'expense'),
-            gte(transactions.date, startDate),
-            sql`${categories.name} != 'Transfer'`
-          )
-        )
-        .groupBy(categories.id);
-
-      const computedBreakdown = categoryRows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        color: row.color || colors.primary,
-        icon: row.icon || 'cart',
-        total: row.total ?? 0,
-        percentage: expense > 0 ? ((row.total ?? 0) / expense) * 100 : 0,
-      }));
-
-      computedBreakdown.sort((a, b) => b.total - a.total);
-      setCategoryBreakdown(computedBreakdown);
-
-      // 3. Fetch trend data (spending over time, excluding transfers)
-      const trendRows = await db
-        .select({
-          date: transactions.date,
-          total: sql<number>`sum(${transactions.amount})`,
-        })
-        .from(transactions)
-        .leftJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(
-          and(
-            eq(transactions.type, 'expense'),
-            gte(transactions.date, startDate),
-            sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
-          )
-        )
-        .groupBy(transactions.date)
-        .orderBy(transactions.date);
-
-      const formattedTrends = trendRows.map((row) => {
-        const dateParts = row.date.split('-');
-        const label = dateParts.length > 2 ? `${dateParts[1]}/${dateParts[2]}` : row.date;
-        return {
-          value: row.total ?? 0,
-          label,
-        };
-      });
-
-      if (formattedTrends.length === 0) {
-        setTrendData([{ value: 0, label: 'No Data' }]);
-      } else {
-        setTrendData(formattedTrends);
-      }
-    } catch (e) {
-      console.error('Error generating reports:', e);
-    }
-  };
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      calculateReports();
-    }, [timeRange])
+      calculateReports(colors.primary);
+    }, [calculateReports, colors.primary])
   );
+
+  const handleTimeRangeChange = (value: 'week' | 'month' | 'year' | 'custom') => {
+    setTimeRange(value);
+    if (value === 'custom') {
+      setDatePickerVisible(true);
+    }
+  };
+
+  const renderCategoryItem: ListRenderItem<CategorySpend> = useCallback(({ item }) => (
+    <Card style={styles.breakdownItem} padding={14}>
+      <View style={styles.itemHeader}>
+        <View style={styles.itemLeft}>
+          <View style={[styles.iconBg, { backgroundColor: item.color + '15' }]}>
+            <Ionicons name={item.icon as any} size={20} color={item.color} />
+          </View>
+          <Text style={[styles.categoryName, { color: colors.text }]}>{item.name}</Text>
+        </View>
+        <View style={styles.itemRight}>
+          <AmountDisplay amount={item.total} type="expense" currency={currency} style={styles.itemAmount} />
+          <Text style={[styles.itemPercent, { color: colors.textSecondary }]}>
+            {Math.round(item.percentage)}%
+          </Text>
+        </View>
+      </View>
+
+      {/* Progress bar with category matching color */}
+      <View style={[styles.barBg, { backgroundColor: colors.border }]}>
+        <View
+          style={[
+            styles.barFill,
+            {
+              width: `${item.percentage}%`,
+              backgroundColor: item.color,
+            },
+          ]}
+        />
+      </View>
+    </Card>
+  ), [colors.text, colors.textSecondary, colors.border, currency]);
 
   const savings = totalIncome - totalExpense;
   const netSavingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
@@ -166,11 +93,37 @@ export default function ReportsScreen() {
           { label: 'WEEK', value: 'week' },
           { label: 'MONTH', value: 'month' },
           { label: 'YEAR', value: 'year' },
+          { label: 'CUSTOM', value: 'custom', icon: 'calendar-outline' },
         ]}
         selectedValue={timeRange}
-        onChange={setTimeRange}
+        onChange={handleTimeRangeChange}
         style={styles.tabsContainer}
       />
+
+      {timeRange === 'custom' && (
+        <Pressable
+          onPress={() => setDatePickerVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Change custom date range"
+          style={styles.customRangeSubtitle}
+        >
+          <Text style={[styles.customRangeText, { color: colors.primary }]}>
+            {customStart && customEnd
+              ? `${new Date(customStart + 'T00:00:00').toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })} - ${new Date(customEnd + 'T00:00:00').toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}`
+              : 'Tap to select custom date range'}
+          </Text>
+          <Ionicons name="pencil" size={14} color={colors.primary} style={styles.pencilIcon} />
+        </Pressable>
+      )}
+
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Cashflow Summary Card */}
@@ -253,46 +206,27 @@ export default function ReportsScreen() {
               </Text>
             </Card>
           ) : (
-            <FlashList
+            <AnyFlashList
               data={categoryBreakdown}
-              renderItem={({ item }) => (
-                <Card style={styles.breakdownItem} padding={14}>
-                  <View style={styles.itemHeader}>
-                    <View style={styles.itemLeft}>
-                      <View style={[styles.iconBg, { backgroundColor: item.color + '15' }]}>
-                        <Ionicons name={item.icon as any} size={20} color={item.color} />
-                      </View>
-                      <Text style={[styles.categoryName, { color: colors.text }]}>{item.name}</Text>
-                    </View>
-                    <View style={styles.itemRight}>
-                      <AmountDisplay amount={item.total} type="expense" currency={currency} style={styles.itemAmount} />
-                      <Text style={[styles.itemPercent, { color: colors.textSecondary }]}>
-                        {Math.round(item.percentage)}%
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Progress bar with category matching color */}
-                  <View style={[styles.barBg, { backgroundColor: colors.border }]}>
-                    <View
-                      style={[
-                        styles.barFill,
-                        {
-                          width: `${item.percentage}%`,
-                          backgroundColor: item.color,
-                        },
-                      ]}
-                    />
-                  </View>
-                </Card>
-              )}
-              keyExtractor={(item) => item.id}
+              renderItem={renderCategoryItem}
+              keyExtractor={(item: CategorySpend) => item.id}
               estimatedItemSize={90}
               scrollEnabled={false}
             />
           )}
         </View>
       </ScrollView>
+
+      <DateRangePicker
+        visible={datePickerVisible}
+        onClose={() => setDatePickerVisible(false)}
+        startDate={customStart}
+        endDate={customEnd}
+        onApply={(start, end) => {
+          setCustomStart(start);
+          setCustomEnd(end);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -445,4 +379,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 24,
   },
+  customRangeSubtitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+    paddingVertical: 4,
+  },
+  customRangeText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  pencilIcon: {
+    marginLeft: 6,
+  },
 });
+

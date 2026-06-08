@@ -12,6 +12,10 @@ export * from './ProgressRing';
 export * from './ProgressBar';
 export * from './DownloadNotification';
 export * from './SelectField';
+export * from './SelectMultiField';
 export * from './DatePickerField';
 export * from './SegmentedControl';
+export * from './FilterChip';
+export * from './DateRangePicker';
 export { Host } from '@expo/ui'; // Export Host for root context wrapping
+

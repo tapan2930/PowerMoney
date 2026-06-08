@@ -1,25 +1,53 @@
-import { Stack } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { db } from '@/db';
 import { settings } from '@/db/schema';
 import { seedDatabase } from '@/db/seed';
 import { useAppStore } from '@/stores/useAppStore';
-import { Host } from '@expo/ui';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
+import { Stack } from 'expo-router';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Appearance, FlatList, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Load the migrations folder using the babel-plugin-inline-import bundler support
 import migrations from '../db/migrations/migrations';
 
+import { CustomAlertModal } from '@/components/feedback/CustomAlertModal';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 import { DownloadNotification } from '@/components/ui';
-import { CustomAlertModal } from '@/components/feedback/CustomAlertModal';
-import { StatusBar } from 'expo-status-bar';
-import * as FileSystem from 'expo-file-system/legacy';
 import { getModelFileName } from '@/utils/modelDownloader';
+import * as FileSystem from 'expo-file-system/legacy';
+import { StatusBar } from 'expo-status-bar';
+
+// Disable scroll indicators globally
+// @ts-ignore
+if (ScrollView.defaultProps) {
+  // @ts-ignore
+  ScrollView.defaultProps.showsVerticalScrollIndicator = false;
+  // @ts-ignore
+  ScrollView.defaultProps.showsHorizontalScrollIndicator = false;
+} else {
+  // @ts-ignore
+  ScrollView.defaultProps = {
+    showsVerticalScrollIndicator: false,
+    showsHorizontalScrollIndicator: false,
+  };
+}
+
+// @ts-ignore
+if (FlatList.defaultProps) {
+  // @ts-ignore
+  FlatList.defaultProps.showsVerticalScrollIndicator = false;
+  // @ts-ignore
+  FlatList.defaultProps.showsHorizontalScrollIndicator = false;
+} else {
+  // @ts-ignore
+  FlatList.defaultProps = {
+    showsVerticalScrollIndicator: false,
+    showsHorizontalScrollIndicator: false,
+  };
+}
 
 export default function RootLayout() {
   const systemColorScheme = useColorScheme() ?? 'light';
@@ -107,6 +135,14 @@ export default function RootLayout() {
 
   // Determine active color scheme
   const activeScheme = theme === 'system' ? systemColorScheme : theme;
+
+  // Sync native iOS/Android color scheme with our active app theme state
+  useEffect(() => {
+    if (activeScheme) {
+      Appearance.setColorScheme(activeScheme === 'dark' ? 'dark' : 'light');
+    }
+  }, [activeScheme]);
+
   const colors = Colors[activeScheme === 'dark' ? 'dark' : 'light'];
 
   // Navigation theme setup
@@ -149,26 +185,25 @@ export default function RootLayout() {
   // 3. Render the application inside the @expo/ui Host context
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Host style={{ flex: 1 }}>
-        <ThemeProvider value={navigationTheme}>
-          <View style={{ flex: 1, backgroundColor: colors.background }}>
-            <StatusBar style={activeScheme === 'dark' ? 'light' : 'dark'} />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.background },
-              }}
-            />
-            <DownloadNotification />
-            <CustomAlertModal />
-            {!isOnboarded && (
-              <View style={StyleSheet.absoluteFill}>
-                <OnboardingWizard />
-              </View>
-            )}
-          </View>
-        </ThemeProvider>
-      </Host>
+      <ThemeProvider value={navigationTheme}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <StatusBar style={activeScheme === 'dark' ? 'light' : 'dark'} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          <DownloadNotification />
+          <CustomAlertModal />
+          {!isOnboarded && (
+            <View style={StyleSheet.absoluteFill}>
+              <OnboardingWizard />
+            </View>
+          )}
+        </View>
+      </ThemeProvider>
+
     </GestureHandlerRootView>
   );
 }

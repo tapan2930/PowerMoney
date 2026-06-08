@@ -1,5 +1,5 @@
 import { CustomAlert } from '@/components/feedback/CustomAlert';
-import { Button, Card, SelectField, TextInput } from '@/components/ui';
+import { Button, Card, SelectField, TextInput, SegmentedControl } from '@/components/ui';
 import { db } from '@/db';
 import { accounts, budgets, chatMessages, goals, settings, transactions } from '@/db/schema';
 import { seedDatabase } from '@/db/seed';
@@ -223,26 +223,15 @@ export default function PreferencesScreen() {
         {/* Appearance Setup */}
         <Card style={styles.sectionCard} padding={20}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Theme Customization</Text>
-          <View style={styles.themeSelectorRow}>
-            {[
-              { type: 'light', label: 'Light', icon: 'sunny-outline' },
-              { type: 'dark', label: 'Dark', icon: 'moon-outline' },
-              { type: 'system', label: 'System', icon: 'phone-portrait-outline' },
-            ].map((opt) => {
-              const isSelected = theme === opt.type;
-              return (
-                <Button
-                  key={opt.type}
-                  label={opt.label}
-                  onPress={() => handleThemeChange(opt.type as any)}
-                  variant={isSelected ? 'primary' : 'outline'}
-                  leftIcon={<Ionicons name={opt.icon as any} size={16} color={isSelected ? '#FFFFFF' : colors.textSecondary} />}
-                  size="sm"
-                  style={styles.themeBtn}
-                />
-              );
-            })}
-          </View>
+          <SegmentedControl
+            options={[
+              { value: 'light', label: 'Light', icon: 'sunny-outline' },
+              { value: 'dark', label: 'Dark', icon: 'moon-outline' },
+              { value: 'system', label: 'System', icon: 'phone-portrait-outline' },
+            ]}
+            selectedValue={theme}
+            onChange={(val) => handleThemeChange(val as 'light' | 'dark' | 'system')}
+          />
         </Card>
 
         {/* AI Tier Setup */}

@@ -1,27 +1,26 @@
-import React, { useState, useCallback } from 'react';
-import { View, ScrollView, Text, Pressable } from 'react-native';
+import { Button, Card, SegmentedControl } from '@/components/ui';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppStore } from '@/stores/useAppStore';
-import { Card, Button } from '@/components/ui';
-import { Ionicons } from '@expo/vector-icons';
-import { useAppTheme } from '@/hooks/useAppTheme';
 
 // Custom Hooks from our feature folder
-import { useBudgetsData, Goal } from '@/features/budgets/hooks/useBudgetsData';
 import { useAddBudget } from '@/features/budgets/hooks/useAddBudget';
 import { useAddGoal } from '@/features/budgets/hooks/useAddGoal';
+import { Goal, useBudgetsData } from '@/features/budgets/hooks/useBudgetsData';
 import { useEditBudget } from '@/features/budgets/hooks/useEditBudget';
 import { useEditGoal } from '@/features/budgets/hooks/useEditGoal';
 
 // Sub-components from our feature folder
-import { BudgetCard } from '@/features/budgets/components/BudgetCard';
-import { GoalCard } from '@/features/budgets/components/GoalCard';
 import { AddBudgetModal } from '@/features/budgets/components/AddBudgetModal';
 import { AddGoalModal } from '@/features/budgets/components/AddGoalModal';
+import { BudgetCard } from '@/features/budgets/components/BudgetCard';
 import { EditBudgetModal } from '@/features/budgets/components/EditBudgetModal';
 import { EditGoalModal } from '@/features/budgets/components/EditGoalModal';
+import { GoalCard } from '@/features/budgets/components/GoalCard';
 
 // Styles
 import { styles } from '@/features/budgets/styles/budgets.styles';
@@ -30,7 +29,7 @@ export default function BudgetsScreen() {
   const { colors } = useAppTheme();
 
   const [activeTab, setActiveTab] = useState<'budgets' | 'goals'>('budgets');
-  
+
   // Modals state
   const [addBudgetVisible, setAddBudgetVisible] = useState(false);
   const [addGoalVisible, setAddGoalVisible] = useState(false);
@@ -111,34 +110,15 @@ export default function BudgetsScreen() {
       </View>
 
       {/* Tabs Selector */}
-      <View style={[styles.tabsContainer, { backgroundColor: colors.border + '30' }]}>
-        <Pressable
-          onPress={() => setActiveTab('budgets')}
-          style={[styles.tabButton, activeTab === 'budgets' && { backgroundColor: colors.surface }]}
-        >
-          <Text
-            style={[
-              styles.tabLabel,
-              { color: activeTab === 'budgets' ? colors.primary : colors.textSecondary },
-            ]}
-          >
-            Budgets
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab('goals')}
-          style={[styles.tabButton, activeTab === 'goals' && { backgroundColor: colors.surface }]}
-        >
-          <Text
-            style={[
-              styles.tabLabel,
-              { color: activeTab === 'goals' ? colors.primary : colors.textSecondary },
-            ]}
-          >
-            Goals
-          </Text>
-        </Pressable>
-      </View>
+      <SegmentedControl
+        options={[
+          { label: 'Budgets', value: 'budgets' },
+          { label: 'Goals', value: 'goals' },
+        ]}
+        selectedValue={activeTab}
+        onChange={setActiveTab}
+        style={styles.tabsContainer}
+      />
 
       {/* Content List */}
       {activeTab === 'budgets' ? (
@@ -157,6 +137,7 @@ export default function BudgetsScreen() {
             renderItem={({ item }) => <BudgetCard budget={item} onPress={() => handleBudgetPress(item)} />}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
             estimatedItemSize={110}
           />
         )

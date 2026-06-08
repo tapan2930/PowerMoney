@@ -1,7 +1,7 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View, StyleProp, ViewStyle } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { BottomSheet, BottomSheetScrollView } from './BottomSheet';
 import { TextInput } from './TextInput';
 
@@ -141,6 +141,7 @@ export function SelectField({
           style={styles.scrollContainer}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+
         >
           {filteredOptions.length > 0 ? (
             filteredOptions.map((opt) => {

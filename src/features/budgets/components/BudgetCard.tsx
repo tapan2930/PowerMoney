@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { Card, ProgressRing, AmountDisplay } from '@/components/ui';
+import { AmountDisplay, Card, ProgressRing } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppStore } from '@/stores/useAppStore';
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { styles } from '../styles/budgets.styles';
 
 interface BudgetCardProps {
@@ -26,6 +26,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress }) => {
       onPress={onPress}
       accessibilityLabel={`Edit budget ${budget.name}`}
       accessibilityRole="button"
+
     >
       <Card style={styles.progressCard} padding={16}>
         <View style={styles.budgetRow}>

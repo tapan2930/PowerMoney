@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, View, DimensionValue, useWindowDimensions } from 'react-native';
-import NativeBottomSheet, { BottomSheetScrollView as NativeBottomSheetScrollView } from '@expo/ui/community/bottom-sheet';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import NativeBottomSheet, { BottomSheetScrollView as NativeBottomSheetScrollView } from '@expo/ui/community/bottom-sheet';
+import React, { useMemo } from 'react';
+import { DimensionValue, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 export interface BottomSheetProps {
   visible: boolean;

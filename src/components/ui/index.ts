@@ -13,4 +13,5 @@ export * from './ProgressBar';
 export * from './DownloadNotification';
 export * from './SelectField';
 export * from './DatePickerField';
+export * from './SegmentedControl';
 export { Host } from '@expo/ui'; // Export Host for root context wrapping

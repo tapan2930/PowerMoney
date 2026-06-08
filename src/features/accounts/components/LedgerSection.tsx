@@ -1,13 +1,13 @@
-import React, { useCallback } from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { router } from 'expo-router';
-import { Card, Button, AmountDisplay } from '@/components/ui';
-import { Ionicons } from '@expo/vector-icons';
+import { AmountDisplay, Button, Card } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAppStore } from '@/stores/useAppStore';
-import { TransactionItem } from '../types';
-import { styles } from '../styles/accounts.styles';
+import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
+import { router } from 'expo-router';
+import React, { useCallback } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { styles } from '../styles/accounts.styles';
+import { TransactionItem } from '../types';
 
 interface LedgerSectionProps {
   transactionsList: TransactionItem[];
@@ -50,7 +50,7 @@ export const LedgerSection: React.FC<LedgerSectionProps> = ({ transactionsList, 
   return (
     <View style={styles.ledgerSection}>
       <View style={styles.ledgerHeader}>
-        <Text style={[styles.ledgerTitle, { color: colors.text }]}>Ledger</Text>
+        <Text style={[styles.ledgerTitle, { color: colors.text }]}>Transcations</Text>
         <Button
           label="Log Transaction"
           onPress={() => router.push('/add-transaction')}

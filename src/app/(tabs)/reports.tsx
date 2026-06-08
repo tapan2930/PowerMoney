@@ -1,16 +1,15 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Text } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
-import { useAppStore } from '@/stores/useAppStore';
+import { BarChart, DonutChart, LineChart } from '@/components/charts';
+import { AmountDisplay, Button, Card, ProgressBar, SegmentedControl } from '@/components/ui';
 import { db } from '@/db';
-import { transactions, categories } from '@/db/schema';
-import { eq, sql, and, gte } from 'drizzle-orm';
-import { Card, AmountDisplay, ProgressBar, Button } from '@/components/ui';
+import { categories, transactions } from '@/db/schema';
+import { useAppStore } from '@/stores/useAppStore';
 import { Ionicons } from '@expo/vector-icons';
-import { DonutChart, BarChart, LineChart } from '@/components/charts';
+import { FlashList } from '@shopify/flash-list';
+import { and, eq, gte, sql } from 'drizzle-orm';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CategorySpend {
   id: string;
@@ -49,14 +48,20 @@ export default function ReportsScreen() {
     try {
       const startDate = getStartDateForRange(timeRange);
 
-      // 1. Fetch total income & expenses in time range
+      // 1. Fetch total income & expenses in time range (excluding transfers)
       const summaryResult = await db
         .select({
           type: transactions.type,
           sum: sql<number>`sum(${transactions.amount})`,
         })
         .from(transactions)
-        .where(gte(transactions.date, startDate))
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .where(
+          and(
+            gte(transactions.date, startDate),
+            sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
+          )
+        )
         .groupBy(transactions.type);
 
       let income = 0;
@@ -70,7 +75,7 @@ export default function ReportsScreen() {
       setTotalIncome(income);
       setTotalExpense(expense);
 
-      // 2. Fetch category wise spending in time range
+      // 2. Fetch category wise spending in time range (excluding transfers)
       const categoryRows = await db
         .select({
           id: categories.id,
@@ -84,7 +89,8 @@ export default function ReportsScreen() {
         .where(
           and(
             eq(transactions.type, 'expense'),
-            gte(transactions.date, startDate)
+            gte(transactions.date, startDate),
+            sql`${categories.name} != 'Transfer'`
           )
         )
         .groupBy(categories.id);
@@ -101,17 +107,19 @@ export default function ReportsScreen() {
       computedBreakdown.sort((a, b) => b.total - a.total);
       setCategoryBreakdown(computedBreakdown);
 
-      // 3. Fetch trend data (spending over time)
+      // 3. Fetch trend data (spending over time, excluding transfers)
       const trendRows = await db
         .select({
           date: transactions.date,
           total: sql<number>`sum(${transactions.amount})`,
         })
         .from(transactions)
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
         .where(
           and(
             eq(transactions.type, 'expense'),
-            gte(transactions.date, startDate)
+            gte(transactions.date, startDate),
+            sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
           )
         )
         .groupBy(transactions.date)
@@ -153,21 +161,16 @@ export default function ReportsScreen() {
       </View>
 
       {/* Date Selectors */}
-      <View style={[styles.tabsContainer, { backgroundColor: colors.border + '30' }]}>
-        {(['week', 'month', 'year'] as const).map((range) => {
-          const isSelected = timeRange === range;
-          return (
-            <Button
-              key={range}
-              label={range.toUpperCase()}
-              onPress={() => setTimeRange(range)}
-              variant={isSelected ? 'primary' : 'ghost'}
-              size="sm"
-              style={styles.tabBtn}
-            />
-          );
-        })}
-      </View>
+      <SegmentedControl
+        options={[
+          { label: 'WEEK', value: 'week' },
+          { label: 'MONTH', value: 'month' },
+          { label: 'YEAR', value: 'year' },
+        ]}
+        selectedValue={timeRange}
+        onChange={setTimeRange}
+        style={styles.tabsContainer}
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Cashflow Summary Card */}

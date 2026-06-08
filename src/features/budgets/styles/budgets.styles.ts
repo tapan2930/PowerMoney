@@ -41,13 +41,14 @@ export const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 80,
+    marginHorizontal: 20
   },
   listContainer: {
     paddingHorizontal: 16,
   },
   emptyCard: {
     alignItems: 'center',
-    marginTop: 32,
+
   },
   emptyText: {
     fontSize: 14,
@@ -56,6 +57,7 @@ export const styles = StyleSheet.create({
   },
   progressCard: {
     marginVertical: 6,
+
   },
   cardHeader: {
     flexDirection: 'row',

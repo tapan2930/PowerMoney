@@ -1,7 +1,7 @@
+import { BottomSheet, BottomSheetScrollView, Button, SelectField, TextInput } from '@/components/ui';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import React from 'react';
 import { Text } from 'react-native';
-import { BottomSheet, BottomSheetScrollView, TextInput, Button, SelectField } from '@/components/ui';
-import { useAppTheme } from '@/hooks/useAppTheme';
 import { styles } from '../styles/accounts.styles';
 
 interface AddAccountModalProps {
@@ -39,7 +39,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   ];
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height="60%">
+    <BottomSheet visible={visible} onClose={onClose}>
       <BottomSheetScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
         <Text style={[styles.modalTitle, { color: colors.text }]}>Create Account</Text>
 

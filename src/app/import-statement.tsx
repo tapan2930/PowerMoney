@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Button, AmountDisplay, TextInput } from '@/components/ui';
-import { Ionicons } from '@expo/vector-icons';
-import { useAppTheme } from '@/hooks/useAppTheme';
-import { useAppStore } from '@/stores/useAppStore';
+import { AmountDisplay, Button, Card, TextInput } from '@/components/ui';
 import { db } from '@/db';
 import { accounts as dbAccounts, categories as dbCategories } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { router } from 'expo-router';
-import { useImportStatement } from '@/features/accounts/hooks/useImportStatement';
-import { SourceAccountSelectModal } from '@/features/accounts/components/SourceAccountSelectModal';
 import { CategorySelectModal } from '@/features/accounts/components/CategorySelectModal';
+import { SourceAccountSelectModal } from '@/features/accounts/components/SourceAccountSelectModal';
+import { useImportStatement } from '@/features/accounts/hooks/useImportStatement';
 import { styles as accountStyles } from '@/features/accounts/styles/accounts.styles';
 import { Account, Category } from '@/features/accounts/types';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { useAppStore } from '@/stores/useAppStore';
+import { Ionicons } from '@expo/vector-icons';
+import { eq } from 'drizzle-orm';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ImportStatementScreen() {
   const { colors } = useAppTheme();
@@ -29,10 +29,10 @@ export default function ImportStatementScreen() {
       try {
         const accs = await db.select().from(dbAccounts).where(eq(dbAccounts.isArchived, false));
         setAccountsList(accs as Account[]);
-        
+
         const cats = await db.select().from(dbCategories);
         setCategoriesList(cats as Category[]);
-        
+
         setDataLoaded(true);
       } catch (e) {
         console.error('Error loading import statement screen data:', e);
@@ -80,7 +80,7 @@ export default function ImportStatementScreen() {
   const filteredTransactions = importTransactions.filter((tx) => {
     const matchesSearch = searchQuery
       ? (tx.merchant?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         tx.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+        tx.description?.toLowerCase().includes(searchQuery.toLowerCase()))
       : true;
 
     const matchesType = typeFilter === 'all'
@@ -130,14 +130,14 @@ export default function ImportStatementScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Pressable
+              <Button
+                label=""
                 onPress={() => router.back()}
+                variant="outline"
+                size="sm"
+                leftIcon={<Ionicons name="arrow-back" size={20} color={colors.text} />}
                 style={styles.backButton}
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
-              >
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
-              </Pressable>
+              />
               <Text style={[styles.headerTitle, { color: colors.text }]}>Statement Review</Text>
             </View>
           </View>
@@ -409,9 +409,8 @@ export default function ImportStatementScreen() {
                             <Pressable
                               onPress={() => setActiveSourceSelectTxId(tx.importHash!)}
                               style={[accountStyles.sourceDropdownButton, { borderColor: colors.border }]}
-                              accessibilityLabel={`Select source account, current account is ${
-                                accountsList.find((a) => a.id === tx.sourceAccountId)?.name || 'None'
-                              }`}
+                              accessibilityLabel={`Select source account, current account is ${accountsList.find((a) => a.id === tx.sourceAccountId)?.name || 'None'
+                                }`}
                               accessibilityRole="button"
                             >
                               <View style={accountStyles.sourceDropdownLeft}>
@@ -496,7 +495,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backButton: {
-    padding: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
   },
   headerTitleContainer: {
     flex: 1,

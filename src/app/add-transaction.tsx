@@ -1,4 +1,4 @@
-import { Button, TextInput, SelectField, DatePickerField } from '@/components/ui';
+import { Button, TextInput, SelectField, DatePickerField, SegmentedControl } from '@/components/ui';
 import { db } from '@/db';
 import { accounts, categories, transactions } from '@/db/schema';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -275,31 +275,14 @@ export default function AddTransactionScreen() {
           {/* Type selector */}
           <View style={styles.selectGroup}>
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Transaction Type</Text>
-            <View style={styles.segmentedControl}>
-              {[
-                { key: 'expense', label: 'EXPENSE', icon: 'trending-down-outline' },
-                { key: 'income', label: 'INCOME', icon: 'trending-up-outline' },
-              ].map((opt) => {
-                const isSelected = type === opt.key;
-                return (
-                  <Button
-                    key={opt.key}
-                    label={opt.label}
-                    onPress={() => setType(opt.key as any)}
-                    variant={isSelected ? 'primary' : 'outline'}
-                    leftIcon={
-                      <Ionicons
-                        name={opt.icon as any}
-                        size={16}
-                        color={isSelected ? '#FFFFFF' : colors.textSecondary}
-                      />
-                    }
-                    size="sm"
-                    style={styles.segmentedBtn}
-                  />
-                );
-              })}
-            </View>
+            <SegmentedControl
+              options={[
+                { value: 'expense', label: 'EXPENSE', icon: 'trending-down-outline' },
+                { value: 'income', label: 'INCOME', icon: 'trending-up-outline' },
+              ]}
+              selectedValue={type}
+              onChange={(val) => setType(val as 'expense' | 'income')}
+            />
           </View>
 
           {/* Merchant */}

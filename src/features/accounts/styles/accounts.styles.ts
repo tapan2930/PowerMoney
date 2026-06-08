@@ -48,7 +48,7 @@ export const styles = StyleSheet.create({
     marginVertical: 0,
   },
   accountVerticalCard: {
-    width: '48%',
+
     height: 120,
     borderRadius: 20,
     justifyContent: 'space-between',
@@ -143,7 +143,7 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
   },
   modalContent: {
-    padding: 24,
+    paddingHorizontal: 24,
   },
   modalTitle: {
     fontSize: 20,
@@ -175,7 +175,8 @@ export const styles = StyleSheet.create({
   },
   saveBtn: {
     marginTop: 32,
-    marginBottom: 40,
+    marginBottom: 20,
+    flex: 1
   },
   importModalContainer: {
     flex: 1,

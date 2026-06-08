@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text } from 'react-native';
 import { Button } from '@/components/ui';
-import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { styles } from '../styles/accounts.styles';
 
 interface AccountsHeaderProps {
@@ -22,7 +22,7 @@ export const AccountsHeader: React.FC<AccountsHeaderProps> = ({
 
   return (
     <View style={styles.header}>
-      <Text style={[styles.title, { color: colors.text }]}>Accounts & Ledgers</Text>
+      <Text style={[styles.title, { color: colors.text }]}>My Accounts</Text>
       <View style={styles.actionButtons}>
         <Button
           label=""

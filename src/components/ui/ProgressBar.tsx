@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, useColorScheme } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useEffect } from 'react';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { Colors } from '@/constants/theme';
 
 export interface ProgressBarProps {
   progress: number; // 0 to 1
@@ -24,15 +24,20 @@ export function ProgressBar({
   const animatedWidth = useSharedValue(0);
 
   useEffect(() => {
-    animatedWidth.value = withSpring(Math.max(0, Math.min(progress, 1)), {
-      damping: 15,
-      stiffness: 100,
-    });
+    const clampedProgress = Math.max(0, Math.min(progress, 1));
+    if (clampedProgress === 0) {
+      animatedWidth.value = 0;
+    } else {
+      animatedWidth.value = withSpring(clampedProgress, {
+        damping: 25,
+        stiffness: 100,
+      });
+    }
   }, [progress]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      width: `${animatedWidth.value * 100}%`,
+      width: `${Math.abs(animatedWidth.value) * 100}%`,
     };
   });
 

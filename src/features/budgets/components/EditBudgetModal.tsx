@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { CustomAlert } from '@/components/feedback/CustomAlert';
-import { BottomSheet, BottomSheetScrollView, TextInput, Button, SelectField } from '@/components/ui';
+import { BottomSheet, BottomSheetScrollView, TextInput, Button, SelectField, SegmentedControl } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { styles } from '../styles/budgets.styles';
 
@@ -99,23 +99,14 @@ export const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
         )}
 
         <Text style={[styles.label, { color: colors.textSecondary }]}>Period</Text>
-        <View style={styles.optionsRow}>
-          {(['monthly', 'weekly'] as const).map((p) => {
-            const isSelected = period === p;
-            return (
-              <Button
-                key={p}
-                label={p.toUpperCase()}
-                onPress={() => setPeriod(p)}
-                variant={isSelected ? 'primary' : 'outline'}
-                size="sm"
-                style={styles.optionBtn}
-                accessibilityLabel={`Select ${p} period`}
-                accessibilityRole="button"
-              />
-            );
-          })}
-        </View>
+        <SegmentedControl
+          options={[
+            { label: 'MONTHLY', value: 'monthly' },
+            { label: 'WEEKLY', value: 'weekly' },
+          ]}
+          selectedValue={period}
+          onChange={setPeriod}
+        />
 
         <View style={{ gap: 12, marginTop: 24, marginBottom: 40 }}>
           <Button

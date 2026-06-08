@@ -1,7 +1,7 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, Platform, StyleProp, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, Platform, StyleProp, ViewStyle, Modal } from 'react-native';
 import { DateTimePicker, DateTimePickerEvent } from '@expo/ui/community/datetime-picker';
 
 export interface DatePickerFieldProps {
@@ -17,7 +17,7 @@ export function DatePickerField({
   onChange,
   containerStyle,
 }: DatePickerFieldProps) {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const [showPicker, setShowPicker] = useState(false);
 
   const currentDate = value ? new Date(value + 'T00:00:00') : new Date();
@@ -76,25 +76,31 @@ export function DatePickerField({
 
       {/* iOS inline calendar in a bottom modal, or Android native dialog */}
       {showPicker && Platform.OS === 'ios' && (
-        <View style={styles.pickerModalContainer}>
-          <Pressable style={styles.overlay} onPress={() => setShowPicker(false)} />
-          <View style={[styles.pickerModalContent, { backgroundColor: colors.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{label || 'Select Date'}</Text>
-              <Pressable onPress={() => setShowPicker(false)} style={styles.doneButton}>
-                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Done</Text>
-              </Pressable>
+        <Modal
+          visible={showPicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowPicker(false)}
+        >
+          <View style={styles.pickerModalContainer}>
+            <Pressable style={styles.overlay} onPress={() => setShowPicker(false)} />
+            <View style={[styles.pickerModalContent, { backgroundColor: colors.background }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{label || 'Select Date'}</Text>
+                <Pressable onPress={() => setShowPicker(false)} style={styles.doneButton}>
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Done</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={currentDate}
+                mode="date"
+                display="inline"
+                onChange={handleDateChange}
+                themeVariant={isDark ? 'dark' : 'light'}
+              />
             </View>
-            <DateTimePicker
-              value={currentDate}
-              mode="date"
-              display="inline"
-              onChange={handleDateChange}
-              textColor={colors.text}
-              themeVariant={colors.background === '#FFFFFF' ? 'light' : 'dark'}
-            />
           </View>
-        </View>
+        </Modal>
       )}
 
       {showPicker && Platform.OS === 'android' && (
@@ -134,23 +140,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   pickerModalContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    top: -500, // extend overlay up to cover screen
-    zIndex: 9999,
+    flex: 1,
     justifyContent: 'flex-end',
   },
   overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   pickerModalContent: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 40,
     paddingTop: 8,
+    paddingHorizontal: 16,
   },
   modalHeader: {
     flexDirection: 'row',

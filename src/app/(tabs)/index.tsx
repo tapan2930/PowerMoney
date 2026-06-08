@@ -2,10 +2,10 @@ import { AmountDisplay, Button, Card, GradientCard, ProgressRing } from '@/compo
 import { getBudgetsWithSpent, getFinancialSummary, getRecentTransactions } from '@/db/queries/financials';
 import { useAppStore } from '@/stores/useAppStore';
 import { Ionicons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface TransactionItem {
@@ -83,6 +83,7 @@ export default function DashboardScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        showsVerticalScrollIndicator={false}
       >
         {/* Header Block */}
         <View style={styles.header}>
@@ -239,7 +240,6 @@ export default function DashboardScreen() {
                 </Card>
               )}
               keyExtractor={(item) => item.id}
-              estimatedItemSize={70}
               scrollEnabled={false}
             />
           )}
@@ -357,13 +357,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sectionContainer: {
-    marginBottom: 24,
+    marginBottom: 0,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
     marginBottom: 12,
   },
   sectionTitle: {
@@ -379,6 +378,7 @@ const styles = StyleSheet.create({
   budgetCard: {
     width: 200,
     marginVertical: 0,
+    marginBottom: 24
   },
   budgetCardRow: {
     flexDirection: 'row',

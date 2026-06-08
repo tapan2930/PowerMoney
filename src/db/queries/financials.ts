@@ -32,8 +32,14 @@ export async function getRecentTransactions(limit = 10) {
 
 // Get total balance, total income, and total expenses for a given period
 export async function getFinancialSummary(startDate?: string, endDate?: string) {
-  const incomeFilters = [eq(transactions.type, 'income')];
-  const expenseFilters = [eq(transactions.type, 'expense')];
+  const incomeFilters = [
+    eq(transactions.type, 'income'),
+    sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
+  ];
+  const expenseFilters = [
+    eq(transactions.type, 'expense'),
+    sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
+  ];
 
   if (startDate && endDate) {
     incomeFilters.push(
@@ -49,11 +55,13 @@ export async function getFinancialSummary(startDate?: string, endDate?: string) 
   const incomeResult = await db
     .select({ total: sql<number>`sum(${transactions.amount})` })
     .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(and(...incomeFilters));
 
   const expenseResult = await db
     .select({ total: sql<number>`sum(${transactions.amount})` })
     .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(and(...expenseFilters));
 
   const totalIncome = incomeResult[0]?.total ?? 0;
@@ -117,7 +125,8 @@ export async function getBudgetsWithSpent() {
     const { startDateStr, endDateStr } = getBudgetPeriodDates(budget.period, budget.startDate, budget.endDate);
 
     const filters = [
-      eq(transactions.type, 'expense')
+      eq(transactions.type, 'expense'),
+      sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
     ];
 
     if (budget.categoryId) {
@@ -134,6 +143,7 @@ export async function getBudgetsWithSpent() {
     const expenseSum = await db
       .select({ total: sql<number>`sum(${transactions.amount})` })
       .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
       .where(and(...filters));
 
     spent = expenseSum[0]?.total ?? 0;

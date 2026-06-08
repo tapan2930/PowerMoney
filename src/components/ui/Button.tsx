@@ -1,7 +1,7 @@
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Haptics } from '@/utils/haptics';
 import React from 'react';
 import { ActivityIndicator, GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useAppTheme } from '@/hooks/useAppTheme';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -169,8 +169,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    alignSelf: 'flex-start',
-
   },
   contentRow: {
     flexDirection: 'row',

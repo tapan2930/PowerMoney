@@ -8,6 +8,13 @@
       "when": 1779650550501,
       "tag": "0000_faulty_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1749351360000,
+      "tag": "0001_recurring_transactions",
+      "breakpoints": true
     }
   ]
 }

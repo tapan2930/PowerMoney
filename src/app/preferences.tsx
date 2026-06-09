@@ -5,7 +5,7 @@ import { accounts, budgets, chatMessages, goals, settings, transactions } from '
 import { seedDatabase } from '@/db/seed';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { ModelTier, useAppStore } from '@/stores/useAppStore';
-import { restoreBackupFromCloud, uploadBackupToCloud } from '@/utils/backup';
+import { restoreBackupFromCloud, uploadBackupToCloud, exportLocalBackup, importLocalBackup } from '@/utils/backup';
 import { Haptics } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { eq, sql } from 'drizzle-orm';
@@ -35,6 +35,8 @@ export default function PreferencesScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isLocalBackingUp, setIsLocalBackingUp] = useState(false);
+  const [isLocalRestoring, setIsLocalRestoring] = useState(false);
 
   const currencyOptions = [
     { key: 'USD', label: 'USD ($)', icon: 'logo-usd' },
@@ -92,6 +94,65 @@ export default function PreferencesScreen() {
               CustomAlert.alert('Restore Failed', e.message || 'No backup was found or restored.');
             } finally {
               setIsRestoring(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleLocalBackup = async () => {
+    setIsLocalBackingUp(true);
+    try {
+      const savedPathInfo = await exportLocalBackup();
+      Haptics.notification('success');
+      CustomAlert.alert('Backup Exported', savedPathInfo);
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      if (errorMsg !== 'Import cancelled.' && errorMsg !== 'Share cancelled') {
+        Haptics.notification('error');
+        CustomAlert.alert('Export Failed', errorMsg || 'An error occurred.');
+      }
+    } finally {
+      setIsLocalBackingUp(false);
+    }
+  };
+
+  const handleLocalRestore = async () => {
+    CustomAlert.alert(
+      'Import Backup File',
+      'This will replace your current local database with the selected backup file. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Import & Overwrite',
+          style: 'destructive',
+          onPress: async () => {
+            setIsLocalRestoring(true);
+            try {
+              await importLocalBackup();
+              Haptics.notification('success');
+              CustomAlert.alert(
+                'Success',
+                'Backup imported successfully. Please restart the app to apply all updates.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      resetStore();
+                      setIsOnboarded(false);
+                    },
+                  },
+                ]
+              );
+            } catch (e) {
+              const errorMsg = e instanceof Error ? e.message : String(e);
+              if (errorMsg !== 'Import cancelled.') {
+                Haptics.notification('error');
+                CustomAlert.alert('Import Failed', errorMsg || 'No backup was picked or restored.');
+              }
+            } finally {
+              setIsLocalRestoring(false);
             }
           },
         },
@@ -254,7 +315,7 @@ export default function PreferencesScreen() {
                 <Button
                   key={opt.label}
                   label={opt.label}
-                  onPress={() => handleModelChange(opt.tier)}
+                  onPress={() => handleModelChange(opt.tier as ModelTier)}
                   variant={isSelected ? 'primary' : 'outline'}
                   size="sm"
                   style={styles.modelBtn}
@@ -267,8 +328,11 @@ export default function PreferencesScreen() {
         {/* Backup Settings */}
         <Card style={styles.sectionCard} padding={20}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Backup & Cloud Sync</Text>
+          
+          {/* Cloud Sync section */}
+          <Text style={[styles.sectionSubtitle, { color: colors.text }]}>Cloud Sync</Text>
           <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
-            Export your database records directly to iCloud or Google Drive. Backups can be restored to keep your devices in sync.
+            Export your database records directly to iCloud or Google Drive.
           </Text>
 
           <View style={styles.backupActions}>
@@ -288,6 +352,35 @@ export default function PreferencesScreen() {
               size="sm"
               loading={isRestoring}
               leftIcon={<Ionicons name="cloud-download-outline" size={18} color={colors.secondary} />}
+              style={styles.backupBtn}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Local Backup section */}
+          <Text style={[styles.sectionSubtitle, { color: colors.text }]}>Local Backup</Text>
+          <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
+            Export database backup file to share/save, or import a previously exported backup file offline.
+          </Text>
+
+          <View style={styles.backupActions}>
+            <Button
+              label="Export Backup"
+              onPress={handleLocalBackup}
+              variant="outline"
+              size="sm"
+              loading={isLocalBackingUp}
+              leftIcon={<Ionicons name="share-outline" size={18} color={colors.primary} />}
+              style={styles.backupBtn}
+            />
+            <Button
+              label="Import Backup"
+              onPress={handleLocalRestore}
+              variant="outline"
+              size="sm"
+              loading={isLocalRestoring}
+              leftIcon={<Ionicons name="download-outline" size={18} color={colors.secondary} />}
               style={styles.backupBtn}
             />
           </View>
@@ -388,6 +481,15 @@ const styles = StyleSheet.create({
   },
   backupBtn: {
     flex: 1,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 16,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
   },
   dangerZone: {
     marginTop: 12,

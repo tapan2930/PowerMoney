@@ -40,6 +40,7 @@ export const tags = sqliteTable('tags', {
 export const transactions = sqliteTable('transactions', {
   id: text('id').primaryKey().$defaultFn(() => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)),
   accountId: text('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  toAccountId: text('to_account_id').references(() => accounts.id, { onDelete: 'set null' }), // destination account for transfers
   categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
   type: text('type', { enum: ['income', 'expense', 'transfer'] }).notNull(),
   amount: real('amount').notNull(),
@@ -48,8 +49,36 @@ export const transactions = sqliteTable('transactions', {
   date: text('date').notNull(),            // ISO 8601 date YYYY-MM-DD
   notes: text('notes'),
   isRecurring: integer('is_recurring', { mode: 'boolean' }).default(false),
-  recurringRule: text('recurring_rule'),   // JSON string: { frequency, interval, end_date }
+  recurringTransactionId: text('recurring_transaction_id'), // links to the recurring rule that generated this
   importHash: text('import_hash'),         // hash to prevent duplicate imports
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').$defaultFn(() => new Date().toISOString()),
+});
+
+// Recurring Transactions (templates that generate real transactions on schedule)
+export const recurringTransactions = sqliteTable('recurring_transactions', {
+  id: text('id').primaryKey().$defaultFn(() => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)),
+  type: text('type', { enum: ['income', 'expense', 'transfer'] }).notNull(),
+  amount: real('amount').notNull(),
+  accountId: text('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  toAccountId: text('to_account_id').references(() => accounts.id, { onDelete: 'set null' }), // for transfers
+  categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  description: text('description'),
+  merchant: text('merchant'),
+
+  // Recurrence Rule
+  frequency: text('frequency', { enum: ['daily', 'weekly', 'monthly', 'yearly'] }).notNull(),
+  interval: integer('interval').notNull().default(1),   // e.g. 2 = every 2 weeks
+  startDate: text('start_date').notNull(),               // ISO YYYY-MM-DD
+  endDate: text('end_date'),                             // NULL = no end date
+  maxOccurrences: integer('max_occurrences'),             // NULL = unlimited
+  completedOccurrences: integer('completed_occurrences').notNull().default(0),
+  nextRunDate: text('next_run_date').notNull(),           // next scheduled execution date
+  lastRunDate: text('last_run_date'),                     // last time a transaction was generated
+
+  // Status
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').$defaultFn(() => new Date().toISOString()),
 });
@@ -118,7 +147,9 @@ export const categorizationRules = sqliteTable('categorization_rules', {
 
 // Relations for easier Drizzle querying
 export const accountsRelations = relations(accounts, ({ many }) => ({
-  transactions: many(transactions),
+  transactions: many(transactions, { relationName: 'transaction_source_account' }),
+  incomingTransfers: many(transactions, { relationName: 'transaction_dest_account' }),
+  recurringTransactions: many(recurringTransactions),
 }));
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -138,10 +169,20 @@ export const transactionsRelations = relations(transactions, ({ one, many }) => 
   account: one(accounts, {
     fields: [transactions.accountId],
     references: [accounts.id],
+    relationName: 'transaction_source_account',
+  }),
+  toAccount: one(accounts, {
+    fields: [transactions.toAccountId],
+    references: [accounts.id],
+    relationName: 'transaction_dest_account',
   }),
   category: one(categories, {
     fields: [transactions.categoryId],
     references: [categories.id],
+  }),
+  recurringTransaction: one(recurringTransactions, {
+    fields: [transactions.recurringTransactionId],
+    references: [recurringTransactions.id],
   }),
   tags: many(transactionTags),
 }));
@@ -162,4 +203,20 @@ export const budgetsRelations = relations(budgets, ({ one }) => ({
     fields: [budgets.categoryId],
     references: [categories.id],
   }),
+}));
+
+export const recurringTransactionsRelations = relations(recurringTransactions, ({ one, many }) => ({
+  account: one(accounts, {
+    fields: [recurringTransactions.accountId],
+    references: [accounts.id],
+  }),
+  toAccount: one(accounts, {
+    fields: [recurringTransactions.toAccountId],
+    references: [accounts.id],
+  }),
+  category: one(categories, {
+    fields: [recurringTransactions.categoryId],
+    references: [categories.id],
+  }),
+  generatedTransactions: many(transactions),
 }));

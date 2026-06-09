@@ -10,6 +10,10 @@ import { styles } from './index.styles';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useDashboardData } from '@/features/dashboard/hooks/useDashboardData';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
+import { db } from '@/db';
+import { recurringTransactions, accounts } from '@/db/schema';
+import { eq, asc } from 'drizzle-orm';
+import { useRecurringEngine } from '@/features/recurring/hooks/useRecurringEngine';
 
 interface TransactionItem {
   id: string;
@@ -25,7 +29,6 @@ interface TransactionItem {
   accountName: string | null;
 }
 
-
 export default function DashboardScreen() {
   const { colors, isDark } = useAppTheme();
   const { userName, currency } = useAppStore();
@@ -40,10 +43,12 @@ export default function DashboardScreen() {
     loadData,
     handlePrevMonth,
     handleNextMonth,
-    handleRefresh,
   } = useDashboardData();
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [upcomingRecurring, setUpcomingRecurring] = useState<any[]>([]);
+
+  const { processRecurringTransactions } = useRecurringEngine();
 
   const now = new Date();
   const isCurrentMonth =
@@ -54,10 +59,40 @@ export default function DashboardScreen() {
     setSelectedMonth(new Date());
   };
 
+  const loadDashboardContent = useCallback(async (month: Date) => {
+    try {
+      // 1. Process recurring engine backfill
+      await processRecurringTransactions();
+      // 2. Load standard financials
+      await loadData(month);
+      // 3. Query upcoming active recurring transactions
+      const results = await db
+        .select({
+          id: recurringTransactions.id,
+          type: recurringTransactions.type,
+          amount: recurringTransactions.amount,
+          description: recurringTransactions.description,
+          merchant: recurringTransactions.merchant,
+          frequency: recurringTransactions.frequency,
+          interval: recurringTransactions.interval,
+          nextRunDate: recurringTransactions.nextRunDate,
+          accountName: accounts.name,
+        })
+        .from(recurringTransactions)
+        .leftJoin(accounts, eq(recurringTransactions.accountId, accounts.id))
+        .where(eq(recurringTransactions.isActive, true))
+        .orderBy(asc(recurringTransactions.nextRunDate))
+        .limit(3);
+      setUpcomingRecurring(results);
+    } catch (err) {
+      console.error('Error loading dashboard content:', err);
+    }
+  }, [loadData, processRecurringTransactions]);
+
   useFocusEffect(
     useCallback(() => {
-      loadData(selectedMonth);
-    }, [loadData, selectedMonth])
+      loadDashboardContent(selectedMonth);
+    }, [loadDashboardContent, selectedMonth])
   );
 
   const handleDateChange = (event: any, date?: Date) => {
@@ -76,12 +111,17 @@ export default function DashboardScreen() {
     return 'Good Evening';
   };
 
+  const handleRefresh = async () => {
+    await loadDashboardContent(selectedMonth);
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
       >
         {/* Header Block */}
         <View style={styles.header}>
@@ -236,6 +276,65 @@ export default function DashboardScreen() {
             />
           </View>
         )}
+
+        {/* Upcoming Recurring Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Upcoming Recurring</Text>
+            <Button
+              label="See All"
+              onPress={() => router.push('/recurring-transactions')}
+              variant="ghost"
+              size="sm"
+            />
+          </View>
+
+          {upcomingRecurring.length === 0 ? (
+            <Card style={styles.emptyCard} padding={24}>
+              <Ionicons name="repeat-outline" size={48} color={colors.textSecondary + '60'} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No upcoming recurring bills/transfers</Text>
+              <Button
+                label="Add Recurring"
+                onPress={() => router.push('/add-recurring-transaction')}
+                variant="primary"
+                size="sm"
+                style={styles.emptyCta}
+              />
+            </Card>
+          ) : (
+            <View style={{ gap: 8, marginBottom: 24 }}>
+              {upcomingRecurring.map((item) => (
+                <Pressable key={item.id} onPress={() => router.push({ pathname: '/add-recurring-transaction', params: { id: item.id } })}>
+                  <Card style={styles.txRow} padding={12}>
+                    <View style={styles.txLeft}>
+                      <View
+                        style={[
+                          styles.txIconContainer,
+                          { backgroundColor: colors.primary + '15' },
+                        ]}
+                      >
+                        <Ionicons
+                          name={item.type === 'transfer' ? 'swap-horizontal-outline' : (item.type === 'income' ? 'trending-up-outline' : 'trending-down-outline')}
+                          size={20}
+                          color={colors.primary}
+                        />
+                      </View>
+                      <View style={styles.txTextCol}>
+                        <Text style={[styles.txMerchant, { color: colors.text }]} numberOfLines={1}>
+                          {item.merchant || item.description || (item.type === 'transfer' ? 'Transfer' : 'Recurring Item')}
+                        </Text>
+                        <Text style={[styles.txDate, { color: colors.textSecondary }]}>
+                          Next: {item.nextRunDate} • {item.frequency === 'daily' ? 'Daily' : (item.frequency === 'weekly' ? 'Weekly' : (item.frequency === 'monthly' ? 'Monthly' : 'Yearly'))}
+                        </Text>
+                      </View>
+                    </View>
+                    <AmountDisplay amount={item.amount} type={item.type === 'income' ? 'income' : 'expense'} currency={currency} style={styles.txAmount} />
+                  </Card>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
 
         {/* Recent Transactions Section */}
         <View style={styles.sectionContainer}>

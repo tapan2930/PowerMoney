@@ -1,15 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet, useColorScheme, Platform, Switch as RNSwitch } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { Haptics } from '@/utils/haptics';
-
+import { Switch as ExpoSwitch, Host } from '@expo/ui';
+import { StyleSheet, Text, useColorScheme, View } from 'react-native';
 // Try to load expo/ui Switch if available, fallback to standard react-native Switch
-let ExpoSwitch: any;
-try {
-  ExpoSwitch = require('@expo/ui').Switch;
-} catch (e) {
-  ExpoSwitch = RNSwitch;
-}
+// let ExpoSwitch: any;
+// try {
+//   ExpoSwitch = require('@expo/ui').Switch;
+// } catch (e) {
+//   ExpoSwitch = RNSwitch;
+// }
 
 export interface SwitchProps {
   value: boolean;
@@ -39,8 +38,6 @@ export function Switch({
     onValueChange(newValue);
   };
 
-  const SwitchComponent = ExpoSwitch || RNSwitch;
-
   return (
     <View style={styles.container}>
       <View style={styles.textContainer}>
@@ -52,16 +49,12 @@ export function Switch({
         )}
       </View>
 
-      <View style={styles.switchWrapper}>
-        <SwitchComponent
+      <Host matchContents style={styles.switchWrapper}>
+        <ExpoSwitch
           value={value}
           onValueChange={handleValueChange}
-          disabled={disabled}
-          trackColor={{ false: colors.border, true: colors.primary }}
-          thumbColor={Platform.OS === 'ios' ? undefined : value ? '#FFFFFF' : '#F4F3F4'}
-          {...(Platform.OS !== 'ios' && Platform.OS !== 'android' ? {} : { label })}
         />
-      </View>
+      </Host>
     </View>
   );
 }
@@ -69,14 +62,11 @@ export function Switch({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 12,
-    width: '100%',
+
+    justifyContent: "space-between",
   },
   textContainer: {
-    flex: 1,
-    paddingRight: 16,
   },
   label: {
     fontSize: 16,
@@ -88,7 +78,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   switchWrapper: {
-    justifyContent: 'center',
-    alignItems: 'center',
+
   },
 });

@@ -1,4 +1,4 @@
-import { useAlertStore, AlertButton, AlertOptions } from '@/stores/useAlertStore';
+import { AlertButton, AlertOptions, useAlertStore } from '@/stores/useAlertStore';
 
 /**
  * Imperative custom alert helper that mirrors the native `Alert.alert` API.
@@ -15,7 +15,8 @@ export const CustomAlert = {
     message?: string,
     buttons?: AlertButton[],
     options?: AlertOptions,
+    error?: Error
   ) => {
-    useAlertStore.getState().showAlert(title, message, buttons, options);
+    useAlertStore.getState().showAlert(title, message, buttons, options, error);
   },
 };

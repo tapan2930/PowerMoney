@@ -16,12 +16,14 @@ interface AlertState {
   message: string;
   buttons: AlertButton[];
   options: AlertOptions;
+  error?: Error;
 
   showAlert: (
     title: string,
     message?: string,
     buttons?: AlertButton[],
     options?: AlertOptions,
+    error?: Error
   ) => void;
   hideAlert: () => void;
 }
@@ -32,10 +34,11 @@ export const useAlertStore = create<AlertState>((set) => ({
   message: '',
   buttons: [],
   options: {},
+  error: undefined,
 
-  showAlert: (title, message = '', buttons = [{ text: 'OK' }], options = {}) =>
-    set({ visible: true, title, message, buttons, options }),
+  showAlert: (title, message = '', buttons = [{ text: 'OK' }], options = {}, error?: Error) =>
+    set({ visible: true, title, message, buttons, options, error }),
 
   hideAlert: () =>
-    set({ visible: false, title: '', message: '', buttons: [], options: {} }),
+    set({ visible: false, title: '', message: '', buttons: [], options: {}, error: undefined }),
 }));

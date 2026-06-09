@@ -39,10 +39,11 @@ export default function AddTransactionScreen() {
 
   // Form State
   const [amount, setAmount] = useState('');
-  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [type, setType] = useState<'income' | 'expense' | 'transfer'>('expense');
   const [merchant, setMerchant] = useState('');
   const [description, setDescription] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [selectedToAccountId, setSelectedToAccountId] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,16 +79,20 @@ export default function AddTransactionScreen() {
           if (tx) {
             setExistingTransaction(tx);
             setAmount(tx.amount.toString());
-            setType(tx.type as 'income' | 'expense');
+            setType(tx.type as 'income' | 'expense' | 'transfer');
             setMerchant(tx.merchant ?? '');
             setDescription(tx.description ?? '');
             setSelectedAccountId(tx.accountId);
             setSelectedCategoryId(tx.categoryId ?? '');
+            setSelectedToAccountId(tx.toAccountId ?? '');
             setDate(tx.date);
           }
         } else {
           if (accs.length > 0) {
             setSelectedAccountId(accs[0].id);
+          }
+          if (accs.length > 1) {
+            setSelectedToAccountId(accs[1].id);
           }
           if (cats.length > 0) {
             setSelectedCategoryId(cats[0].id);
@@ -114,70 +119,124 @@ export default function AddTransactionScreen() {
       return;
     }
 
+    if (type === 'transfer') {
+      if (!selectedToAccountId) {
+        Haptics.notification('error');
+        CustomAlert.alert('Validation Error', 'Please select a destination account.');
+        return;
+      }
+      if (selectedAccountId === selectedToAccountId) {
+        Haptics.notification('error');
+        CustomAlert.alert('Validation Error', 'Source and destination accounts must be different.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
-      const signedAmt = type === 'expense' ? -amt : amt;
-
       if (existingTransaction) {
         // UPDATE flow
-        const oldAccountId = existingTransaction.accountId;
-        const oldAmount = existingTransaction.amount;
+        // 1. Revert old balance changes
         const oldType = existingTransaction.type;
-        const oldSignedAmt = oldType === 'expense' ? -oldAmount : oldAmount;
-        const newSignedAmt = type === 'expense' ? -amt : amt;
+        const oldAmt = existingTransaction.amount;
+        const oldAccountId = existingTransaction.accountId;
+        const oldToAccountId = existingTransaction.toAccountId;
 
-        // Update transaction in database
+        if (oldType === 'expense') {
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} + ${oldAmt}` })
+            .where(eq(accounts.id, oldAccountId));
+        } else if (oldType === 'income') {
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} - ${oldAmt}` })
+            .where(eq(accounts.id, oldAccountId));
+        } else if (oldType === 'transfer') {
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} + ${oldAmt}` })
+            .where(eq(accounts.id, oldAccountId));
+          if (oldToAccountId) {
+            await db
+              .update(accounts)
+              .set({ balance: sql`${accounts.balance} - ${oldAmt}` })
+              .where(eq(accounts.id, oldToAccountId));
+          }
+        }
+
+        // 2. Update transaction in database
         await db
           .update(transactions)
           .set({
             accountId: selectedAccountId,
-            categoryId: selectedCategoryId || null,
+            toAccountId: type === 'transfer' ? selectedToAccountId : null,
+            categoryId: type === 'transfer' ? null : (selectedCategoryId || null),
             type: type,
             amount: amt,
-            description: description || merchant || 'Logged Transaction',
-            merchant: merchant || null,
+            description: description || merchant || (type === 'transfer' ? 'Transfer' : 'Logged Transaction'),
+            merchant: type === 'transfer' ? null : (merchant || null),
             date: date,
             updatedAt: new Date().toISOString(),
           })
           .where(eq(transactions.id, existingTransaction.id));
 
-        // Adjust account balances
-        if (oldAccountId === selectedAccountId) {
-          // Same account balance update
-          const diff = newSignedAmt - oldSignedAmt;
+        // 3. Apply new balance changes
+        if (type === 'expense') {
           await db
             .update(accounts)
-            .set({ balance: sql`${accounts.balance} + ${diff}` })
+            .set({ balance: sql`${accounts.balance} - ${amt}` })
             .where(eq(accounts.id, selectedAccountId));
-        } else {
-          // Different account update
+        } else if (type === 'income') {
           await db
             .update(accounts)
-            .set({ balance: sql`${accounts.balance} - ${oldSignedAmt}` })
-            .where(eq(accounts.id, oldAccountId));
-          await db
-            .update(accounts)
-            .set({ balance: sql`${accounts.balance} + ${newSignedAmt}` })
+            .set({ balance: sql`${accounts.balance} + ${amt}` })
             .where(eq(accounts.id, selectedAccountId));
+        } else if (type === 'transfer') {
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} - ${amt}` })
+            .where(eq(accounts.id, selectedAccountId));
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} + ${amt}` })
+            .where(eq(accounts.id, selectedToAccountId));
         }
       } else {
         // INSERT flow
         // 1. Insert transaction
         await db.insert(transactions).values({
           accountId: selectedAccountId,
-          categoryId: selectedCategoryId || null,
+          toAccountId: type === 'transfer' ? selectedToAccountId : null,
+          categoryId: type === 'transfer' ? null : (selectedCategoryId || null),
           type: type,
           amount: amt,
-          description: description || merchant || 'Logged Transaction',
-          merchant: merchant || null,
+          description: description || merchant || (type === 'transfer' ? 'Transfer' : 'Logged Transaction'),
+          merchant: type === 'transfer' ? null : (merchant || null),
           date: date,
         });
 
-        // 2. Update account balance
-        await db
-          .update(accounts)
-          .set({ balance: sql`${accounts.balance} + ${signedAmt}` })
-          .where(eq(accounts.id, selectedAccountId));
+        // 2. Update account balances
+        if (type === 'expense') {
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} - ${amt}` })
+            .where(eq(accounts.id, selectedAccountId));
+        } else if (type === 'income') {
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} + ${amt}` })
+            .where(eq(accounts.id, selectedAccountId));
+        } else if (type === 'transfer') {
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} - ${amt}` })
+            .where(eq(accounts.id, selectedAccountId));
+          await db
+            .update(accounts)
+            .set({ balance: sql`${accounts.balance} + ${amt}` })
+            .where(eq(accounts.id, selectedToAccountId));
+        }
       }
 
       Haptics.notification('success');
@@ -205,19 +264,37 @@ export default function AddTransactionScreen() {
           onPress: async () => {
             setIsSubmitting(true);
             try {
-              const oldAccountId = existingTransaction.accountId;
-              const oldAmount = existingTransaction.amount;
               const oldType = existingTransaction.type;
-              const oldSignedAmt = oldType === 'expense' ? -oldAmount : oldAmount;
+              const oldAmt = existingTransaction.amount;
+              const oldAccountId = existingTransaction.accountId;
+              const oldToAccountId = existingTransaction.toAccountId;
 
               // 1. Delete the transaction from DB
               await db.delete(transactions).where(eq(transactions.id, existingTransaction.id));
 
               // 2. Revert the effect on account balance
-              await db
-                .update(accounts)
-                .set({ balance: sql`${accounts.balance} - ${oldSignedAmt}` })
-                .where(eq(accounts.id, oldAccountId));
+              if (oldType === 'expense') {
+                await db
+                  .update(accounts)
+                  .set({ balance: sql`${accounts.balance} + ${oldAmt}` })
+                  .where(eq(accounts.id, oldAccountId));
+              } else if (oldType === 'income') {
+                await db
+                  .update(accounts)
+                  .set({ balance: sql`${accounts.balance} - ${oldAmt}` })
+                  .where(eq(accounts.id, oldAccountId));
+              } else if (oldType === 'transfer') {
+                await db
+                  .update(accounts)
+                  .set({ balance: sql`${accounts.balance} + ${oldAmt}` })
+                  .where(eq(accounts.id, oldAccountId));
+                if (oldToAccountId) {
+                  await db
+                    .update(accounts)
+                    .set({ balance: sql`${accounts.balance} - ${oldAmt}` })
+                    .where(eq(accounts.id, oldToAccountId));
+                }
+              }
 
               Haptics.notification('success');
               router.back();
@@ -279,34 +356,17 @@ export default function AddTransactionScreen() {
               options={[
                 { value: 'expense', label: 'EXPENSE', icon: 'trending-down-outline' },
                 { value: 'income', label: 'INCOME', icon: 'trending-up-outline' },
+                { value: 'transfer', label: 'TRANSFER', icon: 'swap-horizontal-outline' },
               ]}
               selectedValue={type}
-              onChange={(val) => setType(val as 'expense' | 'income')}
+              onChange={(val) => setType(val as 'expense' | 'income' | 'transfer')}
             />
           </View>
-
-          {/* Merchant */}
-          <TextInput
-            label="Merchant"
-            placeholder="e.g. Starbucks, Amazon"
-            value={merchant}
-            onChangeText={setMerchant}
-            containerStyle={styles.textInputContainer}
-          />
-
-          {/* Description */}
-          <TextInput
-            label="Description Notes"
-            placeholder="e.g. Weekly groceries"
-            value={description}
-            onChangeText={setDescription}
-            containerStyle={styles.textInputContainer}
-          />
 
           {/* Source Account */}
           {accountsList.length > 0 && (
             <SelectField
-              label="Source Account"
+              label={type === 'transfer' ? 'From Account' : 'Source Account'}
               value={selectedAccountId}
               options={accountOptions}
               onSelect={setSelectedAccountId}
@@ -314,8 +374,39 @@ export default function AddTransactionScreen() {
             />
           )}
 
-          {/* Category Selector */}
-          {categoriesList.length > 0 && (
+          {/* Destination Account (Only for transfers) */}
+          {type === 'transfer' && accountsList.length > 0 && (
+            <SelectField
+              label="To Account"
+              value={selectedToAccountId}
+              options={accountOptions}
+              onSelect={setSelectedToAccountId}
+              placeholder="Select destination account"
+            />
+          )}
+
+          {/* Merchant (Hide for transfers) */}
+          {type !== 'transfer' && (
+            <TextInput
+              label="Merchant"
+              placeholder="e.g. Starbucks, Amazon"
+              value={merchant}
+              onChangeText={setMerchant}
+              containerStyle={styles.textInputContainer}
+            />
+          )}
+
+          {/* Description */}
+          <TextInput
+            label={type === 'transfer' ? 'Transfer Notes' : 'Description Notes'}
+            placeholder="e.g. Weekly groceries"
+            value={description}
+            onChangeText={setDescription}
+            containerStyle={styles.textInputContainer}
+          />
+
+          {/* Category Selector (Hide for transfers) */}
+          {type !== 'transfer' && categoriesList.length > 0 && (
             <SelectField
               label="Category"
               value={selectedCategoryId}

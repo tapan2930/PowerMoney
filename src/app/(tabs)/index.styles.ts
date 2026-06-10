@@ -38,125 +38,90 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 24,
   },
-  monthSelectorRow: {
+  chartCard: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  dashboardChartContainer: {
+    width: '100%',
+
+  },
+  chartHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginBottom: 20,
-  },
-  monthArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 16,
   },
-  monthTextWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  resetButton: {
-    position: 'absolute',
-    right: -32,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  monthTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  monthLabelText: {
+  chartTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  calendarIcon: {
-    marginLeft: 2,
-  },
-  pickerModalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  pickerModalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 40,
-    paddingTop: 8,
-    paddingHorizontal: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  doneButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+  chartSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
   },
   heroCard: {
     marginHorizontal: 16,
-    marginBottom: 20,
+    marginBottom: 24,
+
   },
   heroLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.7)',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   heroAmount: {
     color: '#FFFFFF',
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 24,
+    marginTop: 4,
+    marginBottom: 0,
   },
-  heroFooter: {
+  heroMainRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  heroHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(85, 239, 196, 0.15)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  heroBadgeText: {
+    color: '#55EFC4',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  heroStatsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    paddingTop: 16,
+    paddingTop: 12,
   },
-  heroFooterItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  heroStatCol: {
+    flex: 1,
   },
-  heroFooterTextCol: {
-    marginLeft: 8,
-  },
-  heroFooterLabel: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  heroFooterVal: {
-    fontSize: 13,
+  heroStatLabel: {
+    fontSize: 9,
     fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.6)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  heroStatVal: {
     color: '#FFFFFF',
-    marginTop: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',

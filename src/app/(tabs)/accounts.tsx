@@ -15,8 +15,8 @@ import { AccountsHeader } from '@/features/accounts/components/AccountsHeader';
 import { AccountsView } from '@/features/accounts/components/AccountsView';
 import { AddAccountModal } from '@/features/accounts/components/AddAccountModal';
 import { EditAccountModal } from '@/features/accounts/components/EditAccountModal';
-import { LedgerSection } from '@/features/accounts/components/LedgerSection';
 import { LedgerFilterBar } from '@/features/accounts/components/LedgerFilterBar';
+import { LedgerSection } from '@/features/accounts/components/LedgerSection';
 import { Account, TransactionItem } from '@/features/accounts/types';
 
 // Styles
@@ -100,6 +100,7 @@ export default function AccountsScreen() {
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
         <AccountsView
           accountsList={accountsList}

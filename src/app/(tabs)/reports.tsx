@@ -1,11 +1,11 @@
-import { BarChart, DonutChart, LineChart } from '@/components/charts';
-import { AmountDisplay, Button, Card, ProgressBar, SegmentedControl, DateRangePicker } from '@/components/ui';
+import { DonutChart, ComparisonLineChart, CategoryTrendChart } from '@/components/charts';
+import { AmountDisplay, Button, Card, ProgressBar, SegmentedControl, DateRangePicker, SectionTitleWithInfo } from '@/components/ui';
 import { useAppStore } from '@/stores/useAppStore';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList, ListRenderItem } from '@shopify/flash-list';
 const AnyFlashList = FlashList as any;
-import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -26,11 +26,27 @@ export default function ReportsScreen() {
     totalIncome,
     totalExpense,
     categoryBreakdown,
-    trendData,
+    comparisonCurrentData,
+    comparisonPreviousData,
+    categoryTrendData,
     calculateReports,
   } = useReportData();
 
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [spendingTrendY, setSpendingTrendY] = useState(0);
+
+  useEffect(() => {
+    if (scrollTo === 'spending-trend' && spendingTrendY > 0) {
+      const timer = setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: spendingTrendY, animated: true });
+        router.setParams({ scrollTo: undefined });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollTo, spendingTrendY]);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,6 +96,17 @@ export default function ReportsScreen() {
   const savings = totalIncome - totalExpense;
   const netSavingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
 
+  const currentTotal = comparisonCurrentData.length > 0 ? comparisonCurrentData[comparisonCurrentData.length - 1].value : 0;
+  const previousTotal = comparisonPreviousData.length > 0 ? comparisonPreviousData[comparisonPreviousData.length - 1].value : 0;
+  const diff = currentTotal - previousTotal;
+  const percentageChange = previousTotal > 0 ? (diff / previousTotal) * 100 : 0;
+
+  const isBetter = percentageChange <= 0;
+  const badgeColor = isBetter ? '#55EFC415' : '#FF767515';
+  const badgeTextColor = isBetter ? '#00B894' : '#FF6B6B';
+  const badgeIcon = isBetter ? 'arrow-down-outline' : 'arrow-up-outline';
+  const currencySymbol = currency === 'USD' ? '$' : (currency === 'EUR' ? '€' : (currency === 'GBP' ? '£' : '$'));
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
@@ -125,7 +152,7 @@ export default function ReportsScreen() {
       )}
 
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent} scrollEnabled={scrollEnabled}>
         {/* Cashflow Summary Card */}
         <Card style={styles.cashflowCard} padding={20}>
           <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>Cash Flow Overview</Text>
@@ -159,7 +186,10 @@ export default function ReportsScreen() {
         {/* Visual Charts Section */}
         {totalExpense > 0 && (
           <View style={styles.chartContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Spending Composition</Text>
+            <SectionTitleWithInfo
+              title="Spending Composition"
+              info="Shows how your total spending is distributed across categories for the selected period."
+            />
             <Card padding={16}>
               <DonutChart
                 data={categoryBreakdown.map((item) => ({
@@ -169,35 +199,58 @@ export default function ReportsScreen() {
                 }))}
                 centerLabelTitle={`${currency} ${totalExpense.toFixed(0)}`}
                 centerLabelSubtitle="Total Spend"
+                currencySymbol={currencySymbol}
               />
             </Card>
           </View>
         )}
 
-        {trendData.length > 0 && trendData[0].value > 0 && (
-          <View style={styles.chartContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Spending Trend</Text>
-            <Card padding={16}>
-              <LineChart data={trendData} color={colors.primary} />
+        {(comparisonCurrentData.length > 0 || comparisonPreviousData.length > 0) && (
+          <View style={styles.chartContainer} onLayout={(e) => setSpendingTrendY(e.nativeEvent.layout.y)}>
+            <SectionTitleWithInfo
+              title="Spending Trend"
+              info="Compares your cumulative spending trajectory against the previous equivalent period. A green badge means you're spending less than before."
+            />
+            <Card padding={0} style={{ overflow: 'hidden' }}>
+              <View style={{ padding: 16, paddingBottom: 0 }}>
+                <View style={styles.trendHeader}>
+                  <View>
+                    <Text style={[styles.trendLabel, { color: colors.textSecondary }]}>Total Spent (vs Prev)</Text>
+                    <View style={styles.trendRow}>
+                      <AmountDisplay amount={currentTotal} currency={currency} style={styles.trendAmount} />
+                      <View style={[styles.trendBadge, { backgroundColor: badgeColor }]}>
+                        <Ionicons name={badgeIcon as any} size={14} color={badgeTextColor} />
+                        <Text style={[styles.trendBadgeText, { color: badgeTextColor }]}>
+                          {Math.abs(percentageChange).toFixed(1)}%
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.trendCompareCol}>
+                    <Text style={[styles.compareLabel, { color: colors.textSecondary }]}>
+                      Prev: {currencySymbol}{previousTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <ComparisonLineChart
+                currentData={comparisonCurrentData}
+                previousData={comparisonPreviousData}
+                currencySymbol={currencySymbol}
+                onInteractionChange={(active) => setScrollEnabled(!active)}
+              />
             </Card>
           </View>
         )}
 
-        <View style={styles.chartContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Inflow vs Outflow</Text>
-          <Card padding={16}>
-            <BarChart
-              data={[
-                { value: totalIncome, label: 'Inflow', frontColor: colors.primary },
-                { value: totalExpense, label: 'Outflow', frontColor: colors.danger },
-              ]}
-            />
-          </Card>
-        </View>
+
 
         {/* Category Breakdown */}
         <View style={styles.breakdownSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Spending Breakdown</Text>
+          <SectionTitleWithInfo
+            title="Spending Breakdown"
+            info="Ranked list of all expense categories with their share of total spending for the selected period."
+          />
           {categoryBreakdown.length === 0 ? (
             <Card style={styles.emptyCard} padding={24}>
               <Ionicons name="bar-chart-outline" size={48} color={colors.textSecondary + '60'} />
@@ -215,6 +268,22 @@ export default function ReportsScreen() {
             />
           )}
         </View>
+
+        {categoryTrendData.length > 0 && (
+          <View style={[styles.chartContainer, { marginTop: 24 }]}>
+            <SectionTitleWithInfo
+              title="Category Trends"
+              info="Tracks how your top spending categories have changed over the last 6 months. Spot categories that are growing out of control before they become a habit."
+            />
+            <Card padding={0} style={{ overflow: 'hidden' }}>
+              <CategoryTrendChart
+                series={categoryTrendData}
+                currencySymbol={currencySymbol}
+                onInteractionChange={(active) => setScrollEnabled(!active)}
+              />
+            </Card>
+          </View>
+        )}
       </ScrollView>
 
       <DateRangePicker
@@ -392,6 +461,47 @@ const styles = StyleSheet.create({
   },
   pencilIcon: {
     marginLeft: 6,
+  },
+  trendHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 8,
+  },
+  trendLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  trendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  trendAmount: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+  },
+  trendBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  trendCompareCol: {
+    alignItems: 'flex-end',
+  },
+  compareLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 

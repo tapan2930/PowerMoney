@@ -17,5 +17,6 @@ export * from './DatePickerField';
 export * from './SegmentedControl';
 export * from './FilterChip';
 export * from './DateRangePicker';
+export * from './SectionTitleWithInfo';
 export { Host } from '@expo/ui'; // Export Host for root context wrapping
 

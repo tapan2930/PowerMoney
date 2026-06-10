@@ -261,7 +261,7 @@ export default function ImportStatementScreen() {
             <View style={styles.searchBarContainer}>
               <TextInput
                 label=""
-                placeholder="Search merchant or description..."
+                placeholder="Search merchant or description"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 containerStyle={styles.searchTextInputContainer}

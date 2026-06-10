@@ -1,11 +1,11 @@
-import { useAppTheme } from '@/hooks/useAppTheme';
+import { FilterChip, TextInput } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { TextInput, FilterChip } from '@/components/ui';
-import { LedgerFilterSheet } from './LedgerFilterSheet';
-import { Account, Category } from '../types';
-import React, { useState, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, Text, Pressable } from 'react-native';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Account, Category } from '../types';
+import { LedgerFilterSheet } from './LedgerFilterSheet';
 
 export interface LedgerFilterBarProps {
   searchQuery: string;
@@ -88,7 +88,7 @@ export function LedgerFilterBar({
       {/* Search & Filter Trigger Row */}
       <View style={styles.searchRow}>
         <TextInput
-          placeholder="Search merchant or description..."
+          placeholder="Search merchant or description"
           value={searchQuery}
           onChangeText={setSearchQuery}
           leftIcon="search-outline"
@@ -209,13 +209,16 @@ export function LedgerFilterBar({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.four,
+    paddingHorizontal: Spacing.two,
+
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: Spacing.two,
+
   },
   searchContainer: {
     flex: 1,

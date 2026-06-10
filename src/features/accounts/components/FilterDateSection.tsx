@@ -71,7 +71,10 @@ export function FilterDateSection({
       setShowStartPicker(false);
     }
     if (selectedDate && event.type !== 'dismissed') {
-      onChange(formatDate(selectedDate), endDate);
+      const adjustedDate = Platform.OS === 'android'
+        ? new Date(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate())
+        : selectedDate;
+      onChange(formatDate(adjustedDate), endDate);
     }
   };
 
@@ -80,7 +83,10 @@ export function FilterDateSection({
       setShowEndPicker(false);
     }
     if (selectedDate && event.type !== 'dismissed') {
-      onChange(startDate, formatDate(selectedDate));
+      const adjustedDate = Platform.OS === 'android'
+        ? new Date(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate())
+        : selectedDate;
+      onChange(startDate, formatDate(adjustedDate));
     }
   };
 
@@ -95,6 +101,14 @@ export function FilterDateSection({
 
   const currentStartDateObj = startDate ? new Date(startDate + 'T00:00:00') : new Date();
   const currentEndDateObj = endDate ? new Date(endDate + 'T00:00:00') : new Date();
+
+  const pickerStartDateObj = Platform.OS === 'android'
+    ? new Date(Date.UTC(currentStartDateObj.getFullYear(), currentStartDateObj.getMonth(), currentStartDateObj.getDate()))
+    : currentStartDateObj;
+
+  const pickerEndDateObj = Platform.OS === 'android'
+    ? new Date(Date.UTC(currentEndDateObj.getFullYear(), currentEndDateObj.getMonth(), currentEndDateObj.getDate()))
+    : currentEndDateObj;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.border + '30' }]}>
@@ -185,7 +199,7 @@ export function FilterDateSection({
                 </Pressable>
               </View>
               <DateTimePicker
-                value={currentStartDateObj}
+                value={pickerStartDateObj}
                 mode="date"
                 display="inline"
                 onChange={handleStartDateChange}
@@ -198,7 +212,7 @@ export function FilterDateSection({
 
       {showStartPicker && Platform.OS === 'android' && (
         <DateTimePicker
-          value={currentStartDateObj}
+          value={pickerStartDateObj}
           mode="date"
           display="default"
           onChange={handleStartDateChange}
@@ -222,7 +236,7 @@ export function FilterDateSection({
                 </Pressable>
               </View>
               <DateTimePicker
-                value={currentEndDateObj}
+                value={pickerEndDateObj}
                 mode="date"
                 display="inline"
                 onChange={handleEndDateChange}
@@ -235,7 +249,7 @@ export function FilterDateSection({
 
       {showEndPicker && Platform.OS === 'android' && (
         <DateTimePicker
-          value={currentEndDateObj}
+          value={pickerEndDateObj}
           mode="date"
           display="default"
           onChange={handleEndDateChange}

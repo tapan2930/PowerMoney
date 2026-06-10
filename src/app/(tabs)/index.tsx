@@ -4,12 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, Text, View, Platform, Modal, Pressable } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, Text, View, Platform, Modal, Pressable, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from './index.styles';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useDashboardData } from '@/features/dashboard/hooks/useDashboardData';
-import { DateTimePicker } from '@expo/ui/community/datetime-picker';
+import { ComparisonLineChart } from '@/components/charts';
+import { useReportData } from '@/features/reports/hooks/useReportData';
 import { db } from '@/db';
 import { recurringTransactions, accounts } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
@@ -34,37 +35,30 @@ export default function DashboardScreen() {
   const { userName, currency } = useAppStore();
 
   const {
-    selectedMonth,
-    setSelectedMonth,
     summary,
     recentTransactions,
     activeBudgets,
     refreshing,
     loadData,
-    handlePrevMonth,
-    handleNextMonth,
   } = useDashboardData();
 
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [upcomingRecurring, setUpcomingRecurring] = useState<any[]>([]);
+  const {
+    comparisonCurrentData,
+    comparisonPreviousData,
+    calculateReports,
+  } = useReportData();
 
+  const [upcomingRecurring, setUpcomingRecurring] = useState<any[]>([]);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
   const { processRecurringTransactions } = useRecurringEngine();
 
-  const now = new Date();
-  const isCurrentMonth =
-    selectedMonth.getFullYear() === now.getFullYear() &&
-    selectedMonth.getMonth() === now.getMonth();
-
-  const handleResetMonth = () => {
-    setSelectedMonth(new Date());
-  };
-
-  const loadDashboardContent = useCallback(async (month: Date) => {
+  const loadDashboardContent = useCallback(async () => {
     try {
+      const today = new Date();
       // 1. Process recurring engine backfill
       await processRecurringTransactions();
       // 2. Load standard financials
-      await loadData(month);
+      await loadData(today);
       // 3. Query upcoming active recurring transactions
       const results = await db
         .select({
@@ -84,25 +78,18 @@ export default function DashboardScreen() {
         .orderBy(asc(recurringTransactions.nextRunDate))
         .limit(3);
       setUpcomingRecurring(results);
+      // 4. Load comparison reports data
+      await calculateReports(colors.primary);
     } catch (err) {
       console.error('Error loading dashboard content:', err);
     }
-  }, [loadData, processRecurringTransactions]);
+  }, [loadData, processRecurringTransactions, calculateReports, colors.primary]);
 
   useFocusEffect(
     useCallback(() => {
-      loadDashboardContent(selectedMonth);
-    }, [loadDashboardContent, selectedMonth])
+      loadDashboardContent();
+    }, [loadDashboardContent])
   );
-
-  const handleDateChange = (event: any, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    if (date && event.type !== 'dismissed') {
-      setSelectedMonth(date);
-    }
-  };
 
   const getGreeting = () => {
     const hrs = new Date().getHours();
@@ -112,7 +99,7 @@ export default function DashboardScreen() {
   };
 
   const handleRefresh = async () => {
-    await loadDashboardContent(selectedMonth);
+    await loadDashboardContent();
   };
 
   return (
@@ -121,7 +108,15 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
+        scrollEnabled={scrollEnabled}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            enabled={scrollEnabled}
+          />
+        }
       >
         {/* Header Block */}
         <View style={styles.header}>
@@ -149,96 +144,53 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Hero Balance Card */}
-        <GradientCard colors={!isDark ? ['#6C5CE7', '#8E2DE2'] : ['#1A1A2E', '#16213E']} style={styles.heroCard}>
-          <Text style={styles.heroLabel}>Net Wealth</Text>
-          <AmountDisplay amount={summary.netBalance} currency={currency} style={styles.heroAmount} />
+        {/* Spending Comparison Chart (Full bleed, borderless, above Net Wealth) */}
+        <View style={styles.dashboardChartContainer}>
+          <Pressable
+            onPress={() => router.push({ pathname: '/reports', params: { scrollTo: 'spending-trend' } })}
+            accessibilityRole="button"
+            accessibilityLabel="View spending reports"
+            style={[styles.chartHeader, { paddingHorizontal: 16, paddingTop: 16, marginBottom: 0 }]}
+          >
+            <View>
+              <Text style={[styles.chartTitle, { color: colors.text }]}>Spending Comparison</Text>
+              <Text style={[styles.chartSubtitle, { color: colors.textSecondary }]}>This Month vs Previous Month</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+          <ComparisonLineChart
+            currentData={comparisonCurrentData}
+            previousData={comparisonPreviousData}
+            currencySymbol={currency === 'USD' ? '$' : (currency === 'EUR' ? '€' : (currency === 'GBP' ? '£' : '$'))}
+            width={Dimensions.get('window').width}
+            onInteractionChange={(active) => setScrollEnabled(!active)}
+          />
+        </View>
 
-          <View style={styles.heroFooter}>
-            <View style={styles.heroFooterItem}>
-              <Ionicons name="arrow-up-circle-sharp" size={20} color="#55EFC4" />
-              <View style={styles.heroFooterTextCol}>
-                <Text style={styles.heroFooterLabel}>Savings Rate</Text>
-                <Text style={styles.heroFooterVal}>{Math.round(summary.savingsRate)}%</Text>
-              </View>
+        {/* Compact Net Wealth & Stats Card */}
+        <GradientCard colors={!isDark ? ['#6C5CE7', '#8E2DE2'] : ['#1A1A2E', '#16213E']} style={styles.heroCard} padding={16}>
+          <View style={styles.heroMainRow}>
+            <View>
+              <Text style={styles.heroLabel}>Net Wealth</Text>
+              <AmountDisplay amount={summary.netBalance} type="neutral" currency={currency} style={styles.heroAmount} />
+            </View>
+            <View style={styles.heroHeaderBadge}>
+              <Ionicons name="trending-up" size={14} color="#55EFC4" />
+              <Text style={styles.heroBadgeText}>{Math.round(summary.savingsRate)}% Saved</Text>
+            </View>
+          </View>
+
+          <View style={styles.heroStatsGrid}>
+            <View style={styles.heroStatCol}>
+              <Text style={styles.heroStatLabel}>Inflow</Text>
+              <AmountDisplay amount={summary.totalIncome} type="neutral" currency={currency} style={styles.heroStatVal} />
+            </View>
+            <View style={styles.heroStatCol}>
+              <Text style={styles.heroStatLabel}>Outflow</Text>
+              <AmountDisplay amount={summary.totalExpense} type="neutral" currency={currency} style={styles.heroStatVal} />
             </View>
           </View>
         </GradientCard>
-
-        {/* Month Selector Row */}
-        <View style={styles.monthSelectorRow}>
-          <Pressable
-            onPress={handlePrevMonth}
-            accessibilityRole="button"
-            accessibilityLabel="Previous month"
-            style={({ pressed }) => [
-              styles.monthArrow,
-              { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <Ionicons name="chevron-back" size={18} color={colors.text} />
-          </Pressable>
-
-          <View style={styles.monthTextWrapper}>
-            <Pressable
-              onPress={() => setShowDatePicker(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`Select month: ${selectedMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`}
-              style={styles.monthTextContainer}
-            >
-              <Text style={[styles.monthLabelText, { color: colors.text }]}>
-                {selectedMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-              </Text>
-              <Ionicons name="calendar-outline" size={14} color={colors.primary} style={styles.calendarIcon} />
-            </Pressable>
-
-            {!isCurrentMonth && (
-              <Pressable
-                onPress={handleResetMonth}
-                style={[styles.resetButton, { backgroundColor: colors.primary + '15' }]}
-                accessibilityRole="button"
-                accessibilityLabel="Reset to current month"
-              >
-                <Ionicons name="refresh" size={14} color={colors.primary} />
-              </Pressable>
-            )}
-          </View>
-
-          <Pressable
-            onPress={handleNextMonth}
-            accessibilityRole="button"
-            accessibilityLabel="Next month"
-            style={({ pressed }) => [
-              styles.monthArrow,
-              { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <Ionicons name="chevron-forward" size={18} color={colors.text} />
-          </Pressable>
-        </View>
-
-        {/* Quick Stats Row */}
-        <View style={styles.statsRow}>
-          <Card style={styles.statCard} padding={14}>
-            <View style={styles.statIconRow}>
-              <View style={[styles.statIconBg, { backgroundColor: '#55EFC415' }]}>
-                <Ionicons name="arrow-down" size={16} color="#00B894" />
-              </View>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Income</Text>
-            </View>
-            <AmountDisplay amount={summary.totalIncome} type="income" currency={currency} style={styles.statAmount} />
-          </Card>
-
-          <Card style={styles.statCard} padding={14}>
-            <View style={styles.statIconRow}>
-              <View style={[styles.statIconBg, { backgroundColor: '#FF767515' }]}>
-                <Ionicons name="arrow-up" size={16} color="#FF6B6B" />
-              </View>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Expenses</Text>
-            </View>
-            <AmountDisplay amount={summary.totalExpense} type="expense" currency={currency} style={styles.statAmount} />
-          </Card>
-        </View>
 
         {/* Budgets Section */}
         {activeBudgets.length > 0 && (
@@ -395,42 +347,7 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      {showDatePicker && Platform.OS === 'ios' && (
-        <Modal
-          visible={showDatePicker}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowDatePicker(false)}
-        >
-          <View style={styles.pickerModalContainer}>
-            <Pressable style={styles.overlay} onPress={() => setShowDatePicker(false)} />
-            <View style={[styles.pickerModalContent, { backgroundColor: colors.background }]}>
-              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Select Month</Text>
-                <Pressable onPress={() => setShowDatePicker(false)} style={styles.doneButton}>
-                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Done</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={selectedMonth}
-                mode="date"
-                display="inline"
-                onChange={handleDateChange}
-                themeVariant={isDark ? 'dark' : 'light'}
-              />
-            </View>
-          </View>
-        </Modal>
-      )}
 
-      {showDatePicker && Platform.OS === 'android' && (
-        <DateTimePicker
-          value={selectedMonth}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
-      )}
     </SafeAreaView>
   );
 }

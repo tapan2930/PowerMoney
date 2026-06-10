@@ -9,12 +9,21 @@ export interface LedgerFilters {
   selectedCategoryIds: string[];
 }
 
+const getCurrentMonthRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const start = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  return { start, end };
+};
+
 export function useLedgerFilters(transactionsList: TransactionItem[]) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState<{ start: string | null; end: string | null }>({
-    start: null,
-    end: null,
-  });
+  const [dateRange, setDateRange] = useState<{ start: string | null; end: string | null }>(() =>
+    getCurrentMonthRange()
+  );
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);

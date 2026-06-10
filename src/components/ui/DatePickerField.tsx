@@ -22,6 +22,10 @@ export function DatePickerField({
 
   const currentDate = value ? new Date(value + 'T00:00:00') : new Date();
 
+  const pickerDate = Platform.OS === 'android'
+    ? new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()))
+    : currentDate;
+
   const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     // On Android, we must close the picker first
     if (Platform.OS === 'android') {
@@ -29,9 +33,12 @@ export function DatePickerField({
     }
     
     if (selectedDate && event.type !== 'dismissed') {
-      const yyyy = selectedDate.getFullYear();
-      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(selectedDate.getDate()).padStart(2, '0');
+      const adjustedDate = Platform.OS === 'android'
+        ? new Date(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate())
+        : selectedDate;
+      const yyyy = adjustedDate.getFullYear();
+      const mm = String(adjustedDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(adjustedDate.getDate()).padStart(2, '0');
       const formattedDate = `${yyyy}-${mm}-${dd}`;
       onChange(formattedDate);
     }
@@ -92,7 +99,7 @@ export function DatePickerField({
                 </Pressable>
               </View>
               <DateTimePicker
-                value={currentDate}
+                value={pickerDate}
                 mode="date"
                 display="inline"
                 onChange={handleDateChange}
@@ -105,7 +112,7 @@ export function DatePickerField({
 
       {showPicker && Platform.OS === 'android' && (
         <DateTimePicker
-          value={currentDate}
+          value={pickerDate}
           mode="date"
           display="default"
           onChange={handleDateChange}

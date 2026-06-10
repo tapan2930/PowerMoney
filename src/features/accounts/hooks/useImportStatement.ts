@@ -1,7 +1,7 @@
 import { db } from '@/db';
 import { accounts, transactions } from '@/db/schema';
 import { useAppStore } from '@/stores/useAppStore';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, or, and } from 'drizzle-orm';
 import * as DocumentPicker from 'expo-document-picker';
 import { useEffect, useState } from 'react';
 import { CustomAlert } from '@/components/feedback/CustomAlert';
@@ -114,7 +114,12 @@ export function useImportStatement({ accountsList, categoriesList, onSuccess }: 
       const existingTxs = await db
         .select()
         .from(transactions)
-        .where(eq(transactions.accountId, targetAccId));
+        .where(
+          or(
+            eq(transactions.accountId, targetAccId),
+            eq(transactions.toAccountId, targetAccId)
+          )
+        );
       const existingHashes = new Set(existingTxs.map(t => t.importHash).filter(Boolean));
 
       const balanceAdjustments: Record<string, number> = {};
@@ -127,30 +132,57 @@ export function useImportStatement({ accountsList, categoriesList, onSuccess }: 
       for (const tx of selectedTxs) {
         let isDuplicate = false;
         let matchedTxId: string | null = null;
+        const isTransfer = tx.type === 'income' && tx.sourceType === 'internal' && tx.sourceAccountId;
 
-        if (tx.importHash && existingHashes.has(tx.importHash)) {
-          isDuplicate = true;
+        if (isTransfer) {
+          if (tx.importHash && existingHashes.has(tx.importHash)) {
+            isDuplicate = true;
+          } else {
+            // Check potential duplicates for transfer
+            const potentialDuplicates = existingTxs.filter(t =>
+              t.amount === tx.amount &&
+              t.type === 'transfer' &&
+              t.accountId === tx.sourceAccountId &&
+              t.toAccountId === targetAccId
+            );
+
+            for (const pot of potentialDuplicates) {
+              const potTime = new Date(pot.date).getTime();
+              const txTime = new Date(tx.date).getTime();
+              const days = Math.abs((potTime - txTime) / (1000 * 60 * 60 * 24));
+              if (days <= 2) {
+                isDuplicate = true;
+                matchedTxId = pot.id;
+                break;
+              }
+            }
+          }
         } else {
-          // Fallback duplicate detection: match by amount, type, and date (+/- 2 days)
-          const potentialDuplicates = existingTxs.filter(t =>
-            t.amount === tx.amount &&
-            t.type === tx.type
-          );
+          if (tx.importHash && existingHashes.has(tx.importHash)) {
+            isDuplicate = true;
+          } else {
+            // Fallback duplicate detection: match by amount, type, and date (+/- 2 days)
+            const potentialDuplicates = existingTxs.filter(t =>
+              t.amount === tx.amount &&
+              t.type === tx.type &&
+              t.accountId === targetAccId
+            );
 
-          for (const pot of potentialDuplicates) {
-            const potTime = new Date(pot.date).getTime();
-            const txTime = new Date(tx.date).getTime();
-            const days = Math.abs((potTime - txTime) / (1000 * 60 * 60 * 24));
-            if (days <= 2) {
-              isDuplicate = true;
-              matchedTxId = pot.id;
-              break;
+            for (const pot of potentialDuplicates) {
+              const potTime = new Date(pot.date).getTime();
+              const txTime = new Date(tx.date).getTime();
+              const days = Math.abs((potTime - txTime) / (1000 * 60 * 60 * 24));
+              if (days <= 2) {
+                isDuplicate = true;
+                matchedTxId = pot.id;
+                break;
+              }
             }
           }
         }
 
         if (isDuplicate) {
-          logger.log('Skipping duplicate transaction in target account:', tx.description);
+          logger.log('Skipping duplicate transaction:', tx.description);
           skippedCount++;
           if (matchedTxId && tx.importHash) {
             // Update the existing transaction's importHash to link it and prevent future duplicates
@@ -162,90 +194,48 @@ export function useImportStatement({ accountsList, categoriesList, onSuccess }: 
           continue;
         }
 
-        // Insert primary transaction
-        await db.insert(transactions).values({
-          accountId: targetAccId,
-          categoryId: tx.categoryId || null,
-          type: tx.type,
-          amount: tx.amount,
-          description: tx.description,
-          merchant: tx.merchant,
-          date: tx.date,
-          importHash: tx.importHash,
-        });
+        if (isTransfer) {
+          // Create a single transfer transaction
+          await db.insert(transactions).values({
+            accountId: tx.sourceAccountId!,
+            toAccountId: targetAccId,
+            categoryId: null, // transfers don't have categories
+            type: 'transfer',
+            amount: tx.amount,
+            description: tx.description || `Transfer to ${targetAccName}`,
+            merchant: tx.merchant || null,
+            date: tx.date,
+            importHash: tx.importHash,
+          });
 
-        const signedAmt = tx.type === 'expense' ? -tx.amount : tx.amount;
-        balanceAdjustments[targetAccId] += signedAmt;
+          if (!balanceAdjustments[tx.sourceAccountId!]) {
+            balanceAdjustments[tx.sourceAccountId!] = 0;
+          }
+          balanceAdjustments[tx.sourceAccountId!] -= tx.amount;
+          balanceAdjustments[targetAccId] += tx.amount;
+        } else {
+          // Insert primary transaction
+          await db.insert(transactions).values({
+            accountId: targetAccId,
+            categoryId: tx.categoryId || null,
+            type: tx.type,
+            amount: tx.amount,
+            description: tx.description,
+            merchant: tx.merchant,
+            date: tx.date,
+            importHash: tx.importHash,
+          });
+
+          const signedAmt = tx.type === 'expense' ? -tx.amount : tx.amount;
+          balanceAdjustments[targetAccId] += signedAmt;
+        }
+
         newlyImportedCount++;
 
         // Handle learning categorization rules
         const originalRule = importTransactions.find(t => t.importHash === tx.importHash);
-        if (originalRule && originalRule.categoryId !== tx.categoryId && tx.merchant && tx.categoryId) {
+        if (!isTransfer && originalRule && originalRule.categoryId !== tx.categoryId && tx.merchant && tx.categoryId) {
           await learnCategorizationRule(tx.merchant, tx.categoryId);
-        }
-
-        // Handle corresponding source account transaction if internal transfer
-        if (tx.type === 'income' && tx.sourceType === 'internal' && tx.sourceAccountId) {
-          const transferHash = `transfer_${tx.importHash}`;
-
-          // Fetch existing transactions in source account to check duplicates
-          const sourceExistingTxs = await db
-            .select()
-            .from(transactions)
-            .where(eq(transactions.accountId, tx.sourceAccountId));
-
-          let isSourceDuplicate = false;
-          let matchedSourceTxId: string | null = null;
-
-          const sourceHashes = new Set(sourceExistingTxs.map(t => t.importHash).filter(Boolean));
-
-          if (sourceHashes.has(transferHash)) {
-            isSourceDuplicate = true;
-          } else {
-            // Fallback duplicate check in source account by date (+/- 2 days), amount, and type === 'expense'
-            const sourcePotentials = sourceExistingTxs.filter(t =>
-              t.amount === tx.amount &&
-              t.type === 'expense'
-            );
-
-            for (const pot of sourcePotentials) {
-              const potTime = new Date(pot.date).getTime();
-              const txTime = new Date(tx.date).getTime();
-              const days = Math.abs((potTime - txTime) / (1000 * 60 * 60 * 24));
-              if (days <= 2) {
-                isSourceDuplicate = true;
-                matchedSourceTxId = pot.id;
-                break;
-              }
-            }
-          }
-
-          if (isSourceDuplicate) {
-            logger.log(`Skipping duplicate transfer in source account (${tx.sourceAccountId}):`, tx.description);
-            if (matchedSourceTxId && transferHash) {
-              await db
-                .update(transactions)
-                .set({ importHash: transferHash })
-                .where(eq(transactions.id, matchedSourceTxId));
-            }
-          } else {
-            // Create transfer transaction in source account
-            await db.insert(transactions).values({
-              accountId: tx.sourceAccountId,
-              categoryId: tx.categoryId || null,
-              type: 'expense',
-              amount: tx.amount,
-              description: `Transfer to ${targetAccName}${tx.merchant ? ' - ' + tx.merchant : ''}`,
-              merchant: tx.merchant || null,
-              date: tx.date,
-              importHash: transferHash,
-            });
-
-            if (!balanceAdjustments[tx.sourceAccountId]) {
-              balanceAdjustments[tx.sourceAccountId] = 0;
-            }
-            balanceAdjustments[tx.sourceAccountId] -= tx.amount;
-          }
         }
       }
 

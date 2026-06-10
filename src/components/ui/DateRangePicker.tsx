@@ -93,7 +93,10 @@ export function DateRangePicker({
       setShowStartPicker(false);
     }
     if (selectedDate && event.type !== 'dismissed') {
-      setLocalStart(formatDate(selectedDate));
+      const adjustedDate = Platform.OS === 'android'
+        ? new Date(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate())
+        : selectedDate;
+      setLocalStart(formatDate(adjustedDate));
     }
   };
 
@@ -102,7 +105,10 @@ export function DateRangePicker({
       setShowEndPicker(false);
     }
     if (selectedDate && event.type !== 'dismissed') {
-      setLocalEnd(formatDate(selectedDate));
+      const adjustedDate = Platform.OS === 'android'
+        ? new Date(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate())
+        : selectedDate;
+      setLocalEnd(formatDate(adjustedDate));
     }
   };
 
@@ -117,6 +123,14 @@ export function DateRangePicker({
 
   const currentStartDateObj = localStart ? new Date(localStart + 'T00:00:00') : new Date();
   const currentEndDateObj = localEnd ? new Date(localEnd + 'T00:00:00') : new Date();
+
+  const pickerStartDateObj = Platform.OS === 'android'
+    ? new Date(Date.UTC(currentStartDateObj.getFullYear(), currentStartDateObj.getMonth(), currentStartDateObj.getDate()))
+    : currentStartDateObj;
+
+  const pickerEndDateObj = Platform.OS === 'android'
+    ? new Date(Date.UTC(currentEndDateObj.getFullYear(), currentEndDateObj.getMonth(), currentEndDateObj.getDate()))
+    : currentEndDateObj;
 
   return (
     <BottomSheet visible={visible} onClose={onClose} height="70%">
@@ -291,7 +305,7 @@ export function DateRangePicker({
                 </Pressable>
               </View>
               <DateTimePicker
-                value={currentStartDateObj}
+                value={pickerStartDateObj}
                 mode="date"
                 display="inline"
                 onChange={handleStartDateChange}
@@ -304,7 +318,7 @@ export function DateRangePicker({
 
       {showStartPicker && Platform.OS === 'android' && (
         <DateTimePicker
-          value={currentStartDateObj}
+          value={pickerStartDateObj}
           mode="date"
           display="default"
           onChange={handleStartDateChange}
@@ -329,7 +343,7 @@ export function DateRangePicker({
                 </Pressable>
               </View>
               <DateTimePicker
-                value={currentEndDateObj}
+                value={pickerEndDateObj}
                 mode="date"
                 display="inline"
                 onChange={handleEndDateChange}
@@ -342,7 +356,7 @@ export function DateRangePicker({
 
       {showEndPicker && Platform.OS === 'android' && (
         <DateTimePicker
-          value={currentEndDateObj}
+          value={pickerEndDateObj}
           mode="date"
           display="default"
           onChange={handleEndDateChange}

@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { getBudgetsWithSpent, getFinancialSummary, getRecentTransactions } from '@/db/queries/financials';
 
 export function useDashboardData() {
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [summary, setSummary] = useState({ netBalance: 0, totalIncome: 0, totalExpense: 0, savingsRate: 0 });
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [activeBudgets, setActiveBudgets] = useState<any[]>([]);
@@ -32,38 +31,18 @@ export function useDashboardData() {
     }
   }, []);
 
-  const handlePrevMonth = useCallback(() => {
-    setSelectedMonth((prev) => {
-      const date = new Date(prev);
-      date.setMonth(date.getMonth() - 1);
-      return date;
-    });
-  }, []);
-
-  const handleNextMonth = useCallback(() => {
-    setSelectedMonth((prev) => {
-      const date = new Date(prev);
-      date.setMonth(date.getMonth() + 1);
-      return date;
-    });
-  }, []);
-
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData(selectedMonth);
+    await loadData(new Date());
     setRefreshing(false);
-  }, [loadData, selectedMonth]);
+  }, [loadData]);
 
   return {
-    selectedMonth,
-    setSelectedMonth,
     summary,
     recentTransactions,
     activeBudgets,
     refreshing,
     loadData,
-    handlePrevMonth,
-    handleNextMonth,
     handleRefresh,
   };
 }

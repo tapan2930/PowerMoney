@@ -1,6 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Text, useColorScheme } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { AnimatedNumber } from './AnimatedNumber';
 
 export interface AmountDisplayProps {
@@ -15,7 +14,7 @@ export interface AmountDisplayProps {
 export function AmountDisplay({
   amount,
   type,
-  currency = 'USD',
+  currency = '',
   animate = true,
   style,
   decimals = 2,
@@ -52,7 +51,7 @@ export function AmountDisplay({
       case 'GBP': return '£';
       case 'INR': return '₹';
       case 'JPY': return '¥';
-      case 'CAD': return 'CA$';
+      case 'CAD': return '$';
       case 'AUD': return 'A$';
       default: return `${code} `;
     }

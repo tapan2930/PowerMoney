@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { type CategoryTrendSeries } from '@/components/charts/CategoryTrendChart';
+import { type ComparisonDataPoint } from '@/components/charts/ComparisonLineChart';
 import { db } from '@/db';
 import { categories, transactions } from '@/db/schema';
-import { and, eq, gte, lte, sql, or } from 'drizzle-orm';
-import { type ComparisonDataPoint } from '@/components/charts/ComparisonLineChart';
-import { type CategoryTrendSeries } from '@/components/charts/CategoryTrendChart';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { useCallback, useState } from 'react';
 
 export interface CategorySpend {
   id: string;
@@ -27,44 +27,22 @@ export function useReportData() {
   const [categoryTrendData, setCategoryTrendData] = useState<CategoryTrendSeries[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const getStartDateForRange = useCallback((range: 'week' | 'month' | 'year' | 'custom', customS: string | null) => {
-    if (range === 'custom') {
-      return customS || new Date().toISOString().split('T')[0];
-    }
-    const date = new Date();
-    if (range === 'week') {
-      date.setDate(date.getDate() - 7);
-    } else if (range === 'month') {
-      date.setMonth(date.getMonth() - 1);
-    } else if (range === 'year') {
-      date.setFullYear(date.getFullYear() - 1);
-    }
-    return date.toISOString().split('T')[0];
-  }, []);
-
-  const getEndDateForRange = useCallback((range: 'week' | 'month' | 'year' | 'custom', customE: string | null) => {
-    if (range === 'custom') {
-      return customE || new Date().toISOString().split('T')[0];
-    }
-    return new Date().toISOString().split('T')[0];
-  }, []);
-
   const getRangeBoundaries = useCallback((range: 'week' | 'month' | 'year' | 'custom', customS: string | null, customE: string | null) => {
     const today = new Date();
     let start: Date;
     let end: Date = new Date();
-    
+
     let prevStart: Date;
     let prevEnd: Date;
 
     if (range === 'custom') {
       start = customS ? new Date(customS + 'T00:00:00') : new Date();
       end = customE ? new Date(customE + 'T00:00:00') : new Date();
-      
+
       const durationMs = end.getTime() - start.getTime();
       const prevEndMs = start.getTime() - 24 * 60 * 60 * 1000; // day before customStart
       const prevStartMs = prevEndMs - durationMs;
-      
+
       prevStart = new Date(prevStartMs);
       prevEnd = new Date(prevEndMs);
     } else if (range === 'week') {
@@ -105,111 +83,111 @@ export function useReportData() {
     };
   }, []);
 
-  const calculateReports = useCallback(async (primaryColor: string) => {
+  const calculateReports = useCallback(async (primaryColor: string, comparisonOnly = false) => {
     try {
       setLoading(true);
-      const startDate = getStartDateForRange(timeRange, customStart);
-      const endDate = getEndDateForRange(timeRange, customEnd);
-
       const boundaries = getRangeBoundaries(timeRange, customStart, customEnd);
       const currentStart = boundaries.currentStart;
       const currentEnd = boundaries.currentEnd;
       const previousStart = boundaries.previousStart;
       const previousEnd = boundaries.previousEnd;
 
-      // 1. Fetch total income & expenses in time range (excluding transfers)
-      const summaryResult = await db
-        .select({
-          type: transactions.type,
-          sum: sql<number>`sum(${transactions.amount})`,
-        })
-        .from(transactions)
-        .leftJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(
-          and(
-            gte(transactions.date, startDate),
-            lte(transactions.date, endDate),
-            sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
+
+      if (!comparisonOnly) {
+        // 1. Fetch total income & expenses in time range (excluding transfers)
+        const summaryResult = await db
+          .select({
+            type: transactions.type,
+            sum: sql<number>`sum(${transactions.amount})`,
+          })
+          .from(transactions)
+          .leftJoin(categories, eq(transactions.categoryId, categories.id))
+          .where(
+            and(
+              gte(transactions.date, currentStart),
+              lte(transactions.date, currentEnd),
+              sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
+            )
           )
-        )
-        .groupBy(transactions.type);
+          .groupBy(transactions.type);
 
-      let income = 0;
-      let expense = 0;
+        let income = 0;
+        let expense = 0;
 
-      summaryResult.forEach((row) => {
-        if (row.type === 'income') income = row.sum ?? 0;
-        if (row.type === 'expense') expense = row.sum ?? 0;
-      });
+        summaryResult.forEach((row) => {
+          if (row.type === 'income') income = row.sum ?? 0;
+          if (row.type === 'expense') expense = row.sum ?? 0;
+        });
 
-      setTotalIncome(income);
-      setTotalExpense(expense);
+        setTotalIncome(income);
+        setTotalExpense(expense);
 
-      // 2. Fetch category wise spending in time range (excluding transfers)
-      const categoryRows = await db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          color: categories.color,
-          icon: categories.icon,
-          total: sql<number>`sum(${transactions.amount})`,
-        })
-        .from(transactions)
-        .innerJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(
-          and(
-            eq(transactions.type, 'expense'),
-            gte(transactions.date, startDate),
-            lte(transactions.date, endDate),
-            sql`${categories.name} != 'Transfer'`
+        // 2. Fetch category wise spending in time range (excluding transfers)
+        const categoryRows = await db
+          .select({
+            id: categories.id,
+            name: categories.name,
+            color: categories.color,
+            icon: categories.icon,
+            total: sql<number>`sum(${transactions.amount})`,
+          })
+          .from(transactions)
+          .innerJoin(categories, eq(transactions.categoryId, categories.id))
+          .where(
+            and(
+              eq(transactions.type, 'expense'),
+              gte(transactions.date, currentStart),
+              lte(transactions.date, currentEnd),
+              sql`${categories.name} != 'Transfer'`
+            )
           )
-        )
-        .groupBy(categories.id);
+          .groupBy(categories.id);
 
-      const computedBreakdown = categoryRows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        color: row.color || primaryColor,
-        icon: row.icon || 'cart',
-        total: row.total ?? 0,
-        percentage: expense > 0 ? ((row.total ?? 0) / expense) * 100 : 0,
-      }));
+        const computedBreakdown = categoryRows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          color: row.color || primaryColor,
+          icon: row.icon || 'cart',
+          total: row.total ?? 0,
+          percentage: expense > 0 ? ((row.total ?? 0) / expense) * 100 : 0,
+        }));
 
-      computedBreakdown.sort((a, b) => b.total - a.total);
-      setCategoryBreakdown(computedBreakdown);
+        computedBreakdown.sort((a, b) => b.total - a.total);
+        setCategoryBreakdown(computedBreakdown);
 
-      // 3. Fetch trend data (spending over time, excluding transfers)
-      const trendRows = await db
-        .select({
-          date: transactions.date,
-          total: sql<number>`sum(${transactions.amount})`,
-        })
-        .from(transactions)
-        .leftJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(
-          and(
-            eq(transactions.type, 'expense'),
-            gte(transactions.date, startDate),
-            lte(transactions.date, endDate),
-            sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
+        // 3. Fetch trend data (spending over time, excluding transfers)
+        const trendRows = await db
+          .select({
+            date: transactions.date,
+            total: sql<number>`sum(${transactions.amount})`,
+          })
+          .from(transactions)
+          .leftJoin(categories, eq(transactions.categoryId, categories.id))
+          .where(
+            and(
+              eq(transactions.type, 'expense'),
+              gte(transactions.date, currentStart),
+              lte(transactions.date, currentEnd),
+              sql`(${categories.name} IS NULL OR ${categories.name} != 'Transfer')`
+            )
           )
-        )
-        .groupBy(transactions.date)
-        .orderBy(transactions.date);
+          .groupBy(transactions.date)
+          .orderBy(transactions.date);
 
-      const formattedTrends = trendRows.map((row) => {
-        const dateParts = row.date.split('-');
-        const label = dateParts.length > 2 ? `${dateParts[1]}/${dateParts[2]}` : row.date;
-        return {
-          value: row.total ?? 0,
-          label,
-        };
-      });
+        const formattedTrends = trendRows.map((row) => {
+          const dateParts = row.date.split('-');
+          const label = dateParts.length > 2 ? `${dateParts[1]}/${dateParts[2]}` : row.date;
+          return {
+            value: row.total ?? 0,
+            label,
+          };
+        });
 
-      if (formattedTrends.length === 0) {
-        setTrendData([{ value: 0, label: 'No Data' }]);
-      } else {
-        setTrendData(formattedTrends);
+        if (formattedTrends.length === 0) {
+          setTrendData([{ value: 0, label: 'No Data' }]);
+        } else {
+          setTrendData(formattedTrends);
+        }
       }
 
       // 4. Fetch Comparison Data (excluding transfers)
@@ -263,7 +241,7 @@ export function useReportData() {
       if (timeRange === 'week') {
         const startD = new Date(currentStart + 'T00:00:00');
         const prevStartD = new Date(previousStart + 'T00:00:00');
-        
+
         let currentSum = 0;
         let previousSum = 0;
 
@@ -299,7 +277,7 @@ export function useReportData() {
       } else if (timeRange === 'month') {
         const curStart = new Date(currentStart + 'T00:00:00');
         const prevStart = new Date(previousStart + 'T00:00:00');
-        
+
         const curMaxDays = new Date(curStart.getFullYear(), curStart.getMonth() + 1, 0).getDate();
         const prevMaxDays = new Date(prevStart.getFullYear(), prevStart.getMonth() + 1, 0).getDate();
         const maxDays = Math.max(curMaxDays, prevMaxDays);
@@ -416,82 +394,84 @@ export function useReportData() {
       setComparisonCurrentData(currentPoints);
       setComparisonPreviousData(previousPoints);
 
-      // 5. Category Spending Trend — last 6 calendar months, top 5 categories
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-      const trendStartDate = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, '0')}-01`;
-      const trendEndDate = new Date().toISOString().split('T')[0];
+      if (!comparisonOnly) {
+        // 5. Category Spending Trend — last 6 calendar months, top 5 categories
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+        const trendStartDate = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, '0')}-01`;
+        const trendEndDate = new Date().toISOString().split('T')[0];
 
-      const catTrendRows = await db
-        .select({
-          categoryId: transactions.categoryId,
-          categoryName: categories.name,
-          categoryColor: categories.color,
-          date: transactions.date,
-          total: sql<number>`sum(${transactions.amount})`,
-        })
-        .from(transactions)
-        .innerJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(
-          and(
-            eq(transactions.type, 'expense'),
-            gte(transactions.date, trendStartDate),
-            lte(transactions.date, trendEndDate),
-            sql`${categories.name} != 'Transfer'`
+        const catTrendRows = await db
+          .select({
+            categoryId: transactions.categoryId,
+            categoryName: categories.name,
+            categoryColor: categories.color,
+            date: transactions.date,
+            total: sql<number>`sum(${transactions.amount})`,
+          })
+          .from(transactions)
+          .innerJoin(categories, eq(transactions.categoryId, categories.id))
+          .where(
+            and(
+              eq(transactions.type, 'expense'),
+              gte(transactions.date, trendStartDate),
+              lte(transactions.date, trendEndDate),
+              sql`${categories.name} != 'Transfer'`
+            )
           )
-        )
-        .groupBy(transactions.categoryId, sql`substr(${transactions.date}, 1, 7)`)
-        .orderBy(sql`substr(${transactions.date}, 1, 7)`);
+          .groupBy(transactions.categoryId, sql`substr(${transactions.date}, 1, 7)`)
+          .orderBy(sql`substr(${transactions.date}, 1, 7)`);
 
-      // Aggregate by category across months
-      const catTotals = new Map<string, { name: string; color: string; total: number; monthly: Map<string, number> }>();
-      catTrendRows.forEach((row) => {
-        const catId = row.categoryId ?? 'unknown';
-        const monthKey = row.date.substring(0, 7);
-        if (!catTotals.has(catId)) {
-          catTotals.set(catId, {
-            name: row.categoryName ?? 'Other',
-            color: row.categoryColor ?? primaryColor,
-            total: 0,
-            monthly: new Map(),
-          });
+        // Aggregate by category across months
+        const catTotals = new Map<string, { name: string; color: string; total: number; monthly: Map<string, number> }>();
+        catTrendRows.forEach((row) => {
+          const catId = row.categoryId ?? 'unknown';
+          const monthKey = row.date.substring(0, 7);
+          if (!catTotals.has(catId)) {
+            catTotals.set(catId, {
+              name: row.categoryName ?? 'Other',
+              color: row.categoryColor ?? primaryColor,
+              total: 0,
+              monthly: new Map(),
+            });
+          }
+          const entry = catTotals.get(catId)!;
+          entry.total += row.total ?? 0;
+          entry.monthly.set(monthKey, (entry.monthly.get(monthKey) ?? 0) + (row.total ?? 0));
+        });
+
+        // Top 5 categories by total spend
+        const topCats = [...catTotals.entries()]
+          .sort((a, b) => b[1].total - a[1].total)
+          .slice(0, 5);
+
+        // Build month labels for the last 6 months
+        const monthLabels: string[] = [];
+        const monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        for (let i = 0; i < 6; i++) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - (5 - i));
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          monthLabels.push(key);
         }
-        const entry = catTotals.get(catId)!;
-        entry.total += row.total ?? 0;
-        entry.monthly.set(monthKey, (entry.monthly.get(monthKey) ?? 0) + (row.total ?? 0));
-      });
 
-      // Top 5 categories by total spend
-      const topCats = [...catTotals.entries()]
-        .sort((a, b) => b[1].total - a[1].total)
-        .slice(0, 5);
+        const trendSeries: CategoryTrendSeries[] = topCats.map(([_, cat]) => ({
+          name: cat.name,
+          color: cat.color,
+          data: monthLabels.map((mk) => ({
+            value: cat.monthly.get(mk) ?? 0,
+            label: monthShortNames[parseInt(mk.split('-')[1]) - 1],
+          })),
+        }));
 
-      // Build month labels for the last 6 months
-      const monthLabels: string[] = [];
-      const monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      for (let i = 0; i < 6; i++) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - (5 - i));
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        monthLabels.push(key);
+        setCategoryTrendData(trendSeries);
       }
-
-      const trendSeries: CategoryTrendSeries[] = topCats.map(([_, cat]) => ({
-        name: cat.name,
-        color: cat.color,
-        data: monthLabels.map((mk) => ({
-          value: cat.monthly.get(mk) ?? 0,
-          label: monthShortNames[parseInt(mk.split('-')[1]) - 1],
-        })),
-      }));
-
-      setCategoryTrendData(trendSeries);
     } catch (e) {
       console.error('Error generating reports:', e);
     } finally {
       setLoading(false);
     }
-  }, [timeRange, customStart, customEnd, getStartDateForRange, getEndDateForRange, getRangeBoundaries]);
+  }, [timeRange, customStart, customEnd, getRangeBoundaries]);
 
   return {
     timeRange,

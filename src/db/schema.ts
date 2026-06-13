@@ -47,6 +47,7 @@ export const transactions = sqliteTable('transactions', {
   description: text('description'),
   merchant: text('merchant'),              // original merchant name from statement
   date: text('date').notNull(),            // ISO 8601 date YYYY-MM-DD
+  time: text('time'),                      // HH:mm format
   notes: text('notes'),
   isRecurring: integer('is_recurring', { mode: 'boolean' }).default(false),
   recurringTransactionId: text('recurring_transaction_id'), // links to the recurring rule that generated this
@@ -70,6 +71,7 @@ export const recurringTransactions = sqliteTable('recurring_transactions', {
   frequency: text('frequency', { enum: ['daily', 'weekly', 'monthly', 'yearly'] }).notNull(),
   interval: integer('interval').notNull().default(1),   // e.g. 2 = every 2 weeks
   startDate: text('start_date').notNull(),               // ISO YYYY-MM-DD
+  preferredTime: text('preferred_time'),                   // HH:mm — preferred time of day
   endDate: text('end_date'),                             // NULL = no end date
   maxOccurrences: integer('max_occurrences'),             // NULL = unlimited
   completedOccurrences: integer('completed_occurrences').notNull().default(0),

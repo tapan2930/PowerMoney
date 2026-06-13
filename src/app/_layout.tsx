@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/theme';
+import { useOTAUpdates } from '@/hooks/useOTAUpdates';
 import { db } from '@/db';
 import { settings } from '@/db/schema';
 import { seedDatabase } from '@/db/seed';
@@ -50,6 +51,8 @@ if (FlatList.defaultProps) {
 }
 
 export default function RootLayout() {
+  useOTAUpdates();
+
   const systemColorScheme = useColorScheme() ?? 'light';
   const { success: migrationsSuccess, error: migrationsError } = useMigrations(db, migrations);
 

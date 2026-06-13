@@ -7,6 +7,16 @@
     "icon": "./assets/images/icon.png",
     "scheme": "powermoney",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "checkAutomatically": "NEVER",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      },
+      "url": "https://u.expo.dev/f0c4477c-6f5a-442a-a489-577cea4e4b91"
+    },
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.anonymous.PowerMoney",
@@ -37,7 +47,7 @@
           "backgroundColor": "#121824",
           "android": {
             "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "imageWidth": 200
           }
         }
       ],
@@ -49,6 +59,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f0c4477c-6f5a-442a-a489-577cea4e4b91"
+      }
     }
   }
 }

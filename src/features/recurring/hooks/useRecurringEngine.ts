@@ -94,6 +94,7 @@ export function useRecurringEngine() {
             description: rule.description ?? rule.merchant ?? 'Recurring Transaction',
             merchant: rule.merchant,
             date: dueDate,
+            time: rule.preferredTime,
             isRecurring: true,
             recurringTransactionId: rule.id,
           });

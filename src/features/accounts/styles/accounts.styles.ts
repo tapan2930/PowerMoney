@@ -95,6 +95,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
   ledgerTitle: {
     fontSize: 18,
@@ -104,6 +105,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
+    marginHorizontal: 16,
   },
   emptyText: {
     fontSize: 14,
@@ -115,6 +117,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginVertical: 6,
+    marginHorizontal: 16,
   },
   txLeft: {
     flexDirection: 'row',
@@ -412,5 +415,27 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  verticalAccountWrapper: {
+    width: '48%',
+  },
+  editActionsContainer: {
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 40,
+  },
+  fullWidthButton: {
+    width: '100%',
+  },
+  editDoubleButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  flexOne: {
+    flex: 1,
+  },
+  doneText: {
+    fontWeight: '700',
+    fontSize: 16,
   },
 });

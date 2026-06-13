@@ -2,11 +2,11 @@ import { Colors } from '@/constants/theme';
 import { useEffect } from 'react';
 import { StyleSheet, TextInput, useColorScheme } from 'react-native';
 import Animated, {
+  Easing,
   useAnimatedProps,
   useDerivedValue,
   useSharedValue,
   withTiming,
-  Easing,
 } from 'react-native-reanimated';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
@@ -61,7 +61,7 @@ export function AnimatedNumber({
       ]}
       animatedProps={animatedProps}
       // Provide a default fallback value for initial render/web
-      defaultValue={`${prefix}${value.toFixed(decimals)}${suffix}`}
+      defaultValue={`${prefix}${value.toFixed(decimals).replace(/\d(?=(\d{3})+\.)/g, '$&,')}${suffix}`}
     />
   );
 }

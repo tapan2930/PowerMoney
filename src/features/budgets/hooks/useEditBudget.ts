@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/db';
 import { budgets } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -14,6 +14,13 @@ export function useEditBudget({ budget, onSuccess }: UseEditBudgetProps) {
   const [amount, setAmount] = useState(budget?.amount?.toString() ?? '');
   const [categoryId, setCategoryId] = useState(budget?.categoryId ?? '');
   const [period, setPeriod] = useState<'monthly' | 'weekly'>(budget?.period === 'weekly' ? 'weekly' : 'monthly');
+
+  useEffect(() => {
+    setName(budget?.name ?? '');
+    setAmount(budget?.amount?.toString() ?? '');
+    setCategoryId(budget?.categoryId ?? '');
+    setPeriod(budget?.period === 'weekly' ? 'weekly' : 'monthly');
+  }, [budget]);
 
   const handleUpdateBudget = async () => {
     if (!budget || !name) return;

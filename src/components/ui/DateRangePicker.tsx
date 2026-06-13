@@ -1,19 +1,19 @@
-import { useAppTheme } from '@/hooks/useAppTheme';
-import { Spacing } from '@/constants/theme';
-import { Button } from '@/components/ui/Button';
 import { BottomSheet, BottomSheetScrollView } from '@/components/ui/BottomSheet';
+import { Button } from '@/components/ui/Button';
+import { Spacing } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { DateTimePicker, DateTimePickerEvent } from '@expo/ui/community/datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
-  Modal,
-  ScrollView,
 } from 'react-native';
-import { DateTimePicker, DateTimePickerEvent } from '@expo/ui/community/datetime-picker';
 
 export interface DateRangePickerProps {
   visible: boolean;
@@ -133,7 +133,7 @@ export function DateRangePicker({
     : currentEndDateObj;
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height="70%">
+    <BottomSheet visible={visible} onClose={onClose}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Select Date Range</Text>
         <Pressable

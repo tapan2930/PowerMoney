@@ -1,12 +1,11 @@
-import { useAppTheme } from '@/hooks/useAppTheme';
-import { Spacing } from '@/constants/theme';
 import { BottomSheet, BottomSheetScrollView } from '@/components/ui/BottomSheet';
-import { Checkbox } from '@/components/ui/Checkbox';
 import { Button } from '@/components/ui/Button';
-import { Account } from '../types';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { Spacing } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Account } from '../types';
 
 export interface AccountSelectSheetProps {
   visible: boolean;
@@ -44,7 +43,7 @@ export function AccountSelectSheet({
   const isAllSelected = accounts.length > 0 && selectedAccountIds.length === accounts.length;
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height="65%">
+    <BottomSheet visible={visible} onClose={onClose} height="60%">
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.text }]}>Filter by Accounts</Text>
         <Pressable

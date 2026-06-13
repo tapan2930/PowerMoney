@@ -14,6 +14,7 @@ export * from './DownloadNotification';
 export * from './SelectField';
 export * from './SelectMultiField';
 export * from './DatePickerField';
+export * from './TimePickerField';
 export * from './SegmentedControl';
 export * from './FilterChip';
 export * from './DateRangePicker';

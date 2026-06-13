@@ -44,7 +44,6 @@ export const styles = StyleSheet.create({
   },
   dashboardChartContainer: {
     width: '100%',
-
   },
   chartHeader: {
     flexDirection: 'row',
@@ -64,7 +63,6 @@ export const styles = StyleSheet.create({
   heroCard: {
     marginHorizontal: 16,
     marginBottom: 24,
-
   },
   heroLabel: {
     fontSize: 12,
@@ -256,5 +254,20 @@ export const styles = StyleSheet.create({
   txAmount: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  dashboardChartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    marginBottom: 0,
+  },
+  upcomingListContainer: {
+    gap: 8,
+    marginBottom: 24,
+  },
+  recentTransactionsContainer: {
+    marginBottom: 24,
   },
 });

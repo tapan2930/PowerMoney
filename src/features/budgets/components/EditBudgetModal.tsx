@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
-import { View, Text } from 'react-native';
 import { CustomAlert } from '@/components/feedback/CustomAlert';
-import { BottomSheet, BottomSheetScrollView, TextInput, Button, SelectField, SegmentedControl } from '@/components/ui';
+import { BottomSheet, BottomSheetScrollView, Button, SegmentedControl, SelectField, TextInput } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import React, { useMemo } from 'react';
+import { Text, View } from 'react-native';
 import { styles } from '../styles/budgets.styles';
 
 interface EditBudgetModalProps {
@@ -66,7 +66,7 @@ export const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height="65%">
+    <BottomSheet visible={visible} onClose={onClose} >
       <BottomSheetScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
         <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Budget</Text>
 

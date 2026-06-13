@@ -2,6 +2,7 @@ import { Button, Card, SegmentedControl } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
+const AnyFlashList = FlashList as any;
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -132,10 +133,10 @@ export default function BudgetsScreen() {
             </Card>
           </ScrollView>
         ) : (
-          <FlashList
+          <AnyFlashList
             data={budgetsList}
-            renderItem={({ item }) => <BudgetCard budget={item} onPress={() => handleBudgetPress(item)} />}
-            keyExtractor={(item) => item.id}
+            renderItem={({ item }: { item: any }) => <BudgetCard budget={item} onPress={() => handleBudgetPress(item)} />}
+            keyExtractor={(item: any) => item.id}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             estimatedItemSize={110}
@@ -152,10 +153,10 @@ export default function BudgetsScreen() {
             </Card>
           </ScrollView>
         ) : (
-          <FlashList
+          <AnyFlashList
             data={goalsList}
-            renderItem={({ item }) => <GoalCard goal={item} onPress={() => handleGoalPress(item)} />}
-            keyExtractor={(item) => item.id}
+            renderItem={({ item }: { item: any }) => <GoalCard goal={item} onPress={() => handleGoalPress(item)} />}
+            keyExtractor={(item: any) => item.id}
             contentContainerStyle={styles.scrollContent}
             estimatedItemSize={110}
           />

@@ -14,33 +14,32 @@ export function useAccountsData() {
   const loadData = useCallback(async () => {
     try {
       setRefreshing(true);
-      // Fetch Accounts
-      const accs = await db.select().from(accounts).where(eq(accounts.isArchived, false));
+
+      const [accs, cats, txs] = await Promise.all([
+        db.select().from(accounts).where(eq(accounts.isArchived, false)),
+        db.select().from(categories),
+        db
+          .select({
+            id: transactions.id,
+            amount: transactions.amount,
+            type: transactions.type,
+            description: transactions.description,
+            merchant: transactions.merchant,
+            date: transactions.date,
+            time: transactions.time,
+            accountId: transactions.accountId,
+            categoryId: transactions.categoryId,
+            categoryName: categories.name,
+            categoryIcon: categories.icon,
+            categoryColor: categories.color,
+          })
+          .from(transactions)
+          .leftJoin(categories, eq(transactions.categoryId, categories.id))
+          .orderBy(desc(transactions.date), desc(transactions.createdAt)),
+      ]);
+
       setAccountsList(accs as Account[]);
-
-      // Fetch Categories for dropdown
-      const cats = await db.select().from(categories);
       setCategoriesList(cats as Category[]);
-
-      // Fetch Transactions
-      const txs = await db
-        .select({
-          id: transactions.id,
-          amount: transactions.amount,
-          type: transactions.type,
-          description: transactions.description,
-          merchant: transactions.merchant,
-          date: transactions.date,
-          accountId: transactions.accountId,
-          categoryId: transactions.categoryId,
-          categoryName: categories.name,
-          categoryIcon: categories.icon,
-          categoryColor: categories.color,
-        })
-        .from(transactions)
-        .leftJoin(categories, eq(transactions.categoryId, categories.id))
-        .orderBy(desc(transactions.date), desc(transactions.createdAt));
-
       setTransactionsList(txs as TransactionItem[]);
     } catch (e) {
       logger.error('Error loading accounts data:', e);

@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text } from 'react-native';
 import { CustomAlert } from '@/components/feedback/CustomAlert';
-import { BottomSheet, BottomSheetScrollView, TextInput, Button, SelectField } from '@/components/ui';
+import { BottomSheet, BottomSheetScrollView, Button, SelectField, TextInput } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Account } from '../types';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { styles } from '../styles/accounts.styles';
+import { Account } from '../types';
 
 interface EditAccountModalProps {
   visible: boolean;
@@ -79,7 +79,7 @@ export const EditAccountModal: React.FC<EditAccountModalProps> = ({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height="70%">
+    <BottomSheet visible={visible} onClose={onClose}>
       <BottomSheetScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
         <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Account</Text>
 
@@ -95,7 +95,7 @@ export const EditAccountModal: React.FC<EditAccountModalProps> = ({
           label="Account Type"
           value={type}
           options={accountTypeOptions}
-          onSelect={setType}
+          onSelect={(key) => setType(key as 'bank' | 'credit_card' | 'cash' | 'savings' | 'investment' | 'other')}
           placeholder="Select account type"
         />
 
@@ -113,22 +113,22 @@ export const EditAccountModal: React.FC<EditAccountModalProps> = ({
           </Text>
         )}
 
-        <View style={{ gap: 12, marginTop: 24, marginBottom: 40 }}>
+        <View style={styles.editActionsContainer}>
           <Button
             label="Save Changes"
             onPress={handleUpdateAccount}
             variant="primary"
-            style={{ width: '100%' }}
+            style={styles.fullWidthButton}
             accessibilityLabel="Save account changes"
             accessibilityRole="button"
           />
 
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={styles.editDoubleButtonsRow}>
             <Button
               label={account?.isArchived ? "Restore Account" : "Archive Account"}
               onPress={onArchivePress}
               variant="outline"
-              style={{ flex: 1 }}
+              style={styles.flexOne}
               accessibilityLabel="Archive or restore account"
               accessibilityRole="button"
             />
@@ -137,7 +137,7 @@ export const EditAccountModal: React.FC<EditAccountModalProps> = ({
               label="Delete"
               onPress={onDeletePress}
               variant="danger"
-              style={{ flex: 1 }}
+              style={styles.flexOne}
               accessibilityLabel="Delete account"
               accessibilityRole="button"
             />

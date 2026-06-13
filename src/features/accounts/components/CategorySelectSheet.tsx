@@ -1,12 +1,12 @@
-import { useAppTheme } from '@/hooks/useAppTheme';
-import { Spacing } from '@/constants/theme';
 import { BottomSheet, BottomSheetScrollView } from '@/components/ui/BottomSheet';
-import { Checkbox } from '@/components/ui/Checkbox';
 import { Button } from '@/components/ui/Button';
-import { Category } from '../types';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { Spacing } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Category } from '../types';
 
 export interface CategorySelectSheetProps {
   visible: boolean;

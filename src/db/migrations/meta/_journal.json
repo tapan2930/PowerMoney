@@ -15,6 +15,13 @@
       "when": 1749351360000,
       "tag": "0001_recurring_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1749837840000,
+      "tag": "0002_add_preferred_time",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import { useAppStore } from '@/stores/useAppStore';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatRecurrenceLabel, type RecurringTransactionWithDetails } from '../types';
+import { formatTimeWithAt } from '@/utils/date';
 
 interface RecurringTransactionCardProps {
   item: RecurringTransactionWithDetails;
@@ -75,7 +76,7 @@ export function RecurringTransactionCard({
               <View style={styles.metaRow}>
                 <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
                 <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                  Next: {item.nextRunDate}
+                  Next: {item.nextRunDate}{formatTimeWithAt(item.preferredTime)}
                 </Text>
               </View>
             </View>

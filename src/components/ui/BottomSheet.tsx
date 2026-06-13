@@ -1,6 +1,6 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import NativeBottomSheet, { BottomSheetScrollView as NativeBottomSheetScrollView } from '@expo/ui/community/bottom-sheet';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { DimensionValue, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 export interface BottomSheetProps {
@@ -19,6 +19,16 @@ export function BottomSheet({
   const { colors } = useAppTheme();
   const { height: windowHeight } = useWindowDimensions();
 
+  // Internal state to track if the sheet should be mounted/rendered in the JSX tree
+  const [isMounted, setIsMounted] = useState(visible);
+
+  // Sync visible prop to isMounted
+  useEffect(() => {
+    if (visible) {
+      setIsMounted(true);
+    }
+  }, [visible]);
+
   // Resolve percentages to absolute pixel heights to avoid circular layout dependencies in native sheets
   const resolvedHeight = useMemo(() => {
     if (height === undefined || height === null) return undefined;
@@ -32,13 +42,22 @@ export function BottomSheet({
     return undefined;
   }, [height, windowHeight]);
 
-  if (!visible) return null;
+  const handleClose = () => {
+    // When the sheet finishes closing or is dismissed, we unmount it
+    setIsMounted(false);
+    if (visible) {
+      onClose();
+    }
+  };
+
+  // If not visible and not mounted, don't render anything
+  if (!isMounted) return null;
 
   return (
     <NativeBottomSheet
-      index={0}
-      onClose={onClose}
-      onDismiss={onClose}
+      index={visible ? 0 : -1}
+      onClose={handleClose}
+      onDismiss={handleClose}
       enablePanDownToClose
       backgroundStyle={{
         backgroundColor: colors.background,

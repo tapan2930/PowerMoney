@@ -31,21 +31,27 @@ export function useRecurringForm(editId?: string) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(!!editId);
 
-  const [formData, setFormData] = useState<RecurringFormData>({
-    type: 'expense',
-    amount: '',
-    accountId: '',
-    toAccountId: '',
-    categoryId: '',
-    description: '',
-    merchant: '',
-    frequency: 'monthly',
-    interval: '1',
-    startDate: formatLocalDate(new Date()),
-    endDate: '',
-    hasEndDate: false,
-    hasMaxOccurrences: false,
-    maxOccurrences: '',
+  const [formData, setFormData] = useState<RecurringFormData>(() => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    return {
+      type: 'expense',
+      amount: '',
+      accountId: '',
+      toAccountId: '',
+      categoryId: '',
+      description: '',
+      merchant: '',
+      frequency: 'monthly',
+      interval: '1',
+      startDate: formatLocalDate(now),
+      startTime: `${hh}:${mm}`,
+      endDate: '',
+      hasEndDate: false,
+      hasMaxOccurrences: false,
+      maxOccurrences: '',
+    };
   });
 
   const updateField = useCallback(<K extends keyof RecurringFormData>(
@@ -100,6 +106,7 @@ export function useRecurringForm(editId?: string) {
               frequency: existing.frequency as RecurrenceFrequency,
               interval: existing.interval.toString(),
               startDate: existing.startDate,
+              startTime: existing.preferredTime ?? '09:00',
               endDate: existing.endDate ?? '',
               hasEndDate: !!existing.endDate,
               hasMaxOccurrences: existing.maxOccurrences !== null && existing.maxOccurrences > 0,
@@ -197,6 +204,7 @@ export function useRecurringForm(editId?: string) {
             frequency: formData.frequency,
             interval,
             startDate: formData.startDate,
+            preferredTime: formData.startTime || null,
             endDate: formData.hasEndDate ? formData.endDate : null,
             maxOccurrences,
             nextRunDate: formData.startDate, // Reset to start date so it re-evaluates
@@ -216,6 +224,7 @@ export function useRecurringForm(editId?: string) {
           frequency: formData.frequency,
           interval,
           startDate: formData.startDate,
+          preferredTime: formData.startTime || null,
           endDate: formData.hasEndDate ? formData.endDate : null,
           maxOccurrences,
           completedOccurrences: 0,

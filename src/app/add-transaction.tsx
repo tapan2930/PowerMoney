@@ -1,17 +1,17 @@
-import { Button, TextInput, SelectField, DatePickerField, SegmentedControl } from '@/components/ui';
+import { CustomAlert } from '@/components/feedback/CustomAlert';
+import { Button, DatePickerField, SegmentedControl, SelectField, TextInput, TimePickerField } from '@/components/ui';
 import { db } from '@/db';
 import { accounts, categories, transactions } from '@/db/schema';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Spacing } from '@/constants/theme';
 import { Haptics } from '@/utils/haptics';
 import { logger } from '@/utils/logger';
 import { Ionicons } from '@expo/vector-icons';
 import { eq, sql } from 'drizzle-orm';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
-import { CustomAlert } from '@/components/feedback/CustomAlert';
+import { useEffect, useMemo, useState } from 'react';
+import { ScrollView, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { styles } from './add-transaction.styles';
 
 interface Account {
   id: string;
@@ -46,6 +46,12 @@ export default function AddTransactionScreen() {
   const [selectedToAccountId, setSelectedToAccountId] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState(() => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const accountOptions = useMemo(() => {
@@ -86,6 +92,7 @@ export default function AddTransactionScreen() {
             setSelectedCategoryId(tx.categoryId ?? '');
             setSelectedToAccountId(tx.toAccountId ?? '');
             setDate(tx.date);
+            setTime(tx.time ?? '');
           }
         } else {
           if (accs.length > 0) {
@@ -177,6 +184,7 @@ export default function AddTransactionScreen() {
             description: description || merchant || (type === 'transfer' ? 'Transfer' : 'Logged Transaction'),
             merchant: type === 'transfer' ? null : (merchant || null),
             date: date,
+            time: time || null,
             updatedAt: new Date().toISOString(),
           })
           .where(eq(transactions.id, existingTransaction.id));
@@ -214,6 +222,7 @@ export default function AddTransactionScreen() {
           description: description || merchant || (type === 'transfer' ? 'Transfer' : 'Logged Transaction'),
           merchant: type === 'transfer' ? null : (merchant || null),
           date: date,
+          time: time || null,
         });
 
         // 2. Update account balances
@@ -329,7 +338,7 @@ export default function AddTransactionScreen() {
         <View style={styles.headerRightSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* Form Container */}
         <View style={styles.formContainer}>
           {/* Amount field */}
@@ -347,6 +356,13 @@ export default function AddTransactionScreen() {
             label="Transaction Date"
             value={date}
             onChange={setDate}
+          />
+
+          {/* Time Picker Field */}
+          <TimePickerField
+            label="Transaction Time"
+            value={time}
+            onChange={setTime}
           />
 
           {/* Type selector */}
@@ -443,73 +459,3 @@ export default function AddTransactionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.two,
-  },
-  backBtn: {
-    paddingHorizontal: Spacing.two,
-    borderRadius: 12,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  headerRightSpacer: {
-    width: 40,
-  },
-  scrollContent: {
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.three,
-  },
-  formContainer: {
-    marginVertical: Spacing.two,
-    gap: Spacing.four,
-  },
-  textInputContainer: {
-    marginBottom: 0,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: Spacing.one,
-    paddingLeft: Spacing.one,
-  },
-  segmentedControl: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
-  segmentedBtn: {
-    flex: 1,
-  },
-  selectGroup: {
-    gap: Spacing.two,
-  },
-  selectorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  selectorItem: {
-    flexGrow: 1,
-    minWidth: '45%',
-  },
-  submitBtn: {
-    marginTop: Spacing.three,
-    alignSelf: 'stretch',
-  },
-  deleteBtn: {
-    marginTop: Spacing.two,
-    alignSelf: 'stretch',
-  },
-});

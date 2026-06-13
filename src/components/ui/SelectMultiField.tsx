@@ -3,8 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { BottomSheet, BottomSheetScrollView } from './BottomSheet';
-import { TextInput } from './TextInput';
 import { SelectOption } from './SelectField';
+import { TextInput } from './TextInput';
 
 export interface SelectMultiFieldProps {
   label?: string;
@@ -131,7 +131,7 @@ export function SelectMultiField({
         />
       </Pressable>
 
-      <BottomSheet visible={isOpen} onClose={handleClose} height="60%">
+      <BottomSheet visible={isOpen} onClose={handleClose} >
         <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
           <Text style={[styles.modalTitle, { color: colors.text }]}>
             {label ? `Select ${label}` : 'Select Options'}

@@ -1,6 +1,6 @@
 import { db } from '../index';
-import { accounts, transactions, categories, budgets, tags } from '../schema';
-import { desc, eq, sql, and, gte, lte } from 'drizzle-orm';
+import { accounts, transactions, categories, budgets, tags, recurringTransactions } from '../schema';
+import { desc, eq, sql, and, gte, lte, asc } from 'drizzle-orm';
 
 // Get all accounts and calculate total balance
 export async function getAccounts() {
@@ -17,6 +17,7 @@ export async function getRecentTransactions(limit = 10) {
       description: transactions.description,
       merchant: transactions.merchant,
       date: transactions.date,
+      time: transactions.time,
       notes: transactions.notes,
       categoryName: categories.name,
       categoryIcon: categories.icon,
@@ -156,4 +157,26 @@ export async function getBudgetsWithSpent() {
   }
 
   return results;
+}
+
+// Get upcoming active recurring transactions
+export async function getUpcomingRecurring(limit = 3) {
+  return await db
+    .select({
+      id: recurringTransactions.id,
+      type: recurringTransactions.type,
+      amount: recurringTransactions.amount,
+      description: recurringTransactions.description,
+      merchant: recurringTransactions.merchant,
+      frequency: recurringTransactions.frequency,
+      interval: recurringTransactions.interval,
+      nextRunDate: recurringTransactions.nextRunDate,
+      preferredTime: recurringTransactions.preferredTime,
+      accountName: accounts.name,
+    })
+    .from(recurringTransactions)
+    .leftJoin(accounts, eq(recurringTransactions.accountId, accounts.id))
+    .where(eq(recurringTransactions.isActive, true))
+    .orderBy(asc(recurringTransactions.nextRunDate))
+    .limit(limit);
 }

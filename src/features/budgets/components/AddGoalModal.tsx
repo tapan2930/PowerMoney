@@ -1,7 +1,7 @@
-import React from 'react';
-import { BottomSheet, BottomSheetScrollView, TextInput, Button, DatePickerField } from '@/components/ui';
-import { Text } from 'react-native';
+import { BottomSheet, BottomSheetScrollView, Button, DatePickerField, TextInput } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import React from 'react';
+import { Text } from 'react-native';
 import { styles } from '../styles/budgets.styles';
 
 interface AddGoalModalProps {
@@ -34,7 +34,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const { colors } = useAppTheme();
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height="65%">
+    <BottomSheet visible={visible} onClose={onClose}>
       <BottomSheetScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
         <Text style={[styles.modalTitle, { color: colors.text }]}>New Savings Goal</Text>
 

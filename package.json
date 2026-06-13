@@ -28,6 +28,7 @@
     "expo-status-bar": "~56.0.4",
     "expo-symbols": "~56.0.5",
     "expo-system-ui": "~56.0.5",
+    "expo-updates": "~56.0.19",
     "expo-web-browser": "~56.0.5",
     "llama.rn": "^0.12.3",
     "react": "19.2.3",
@@ -63,7 +64,8 @@
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "apk:debug": "cd android && ./gradlew assembleDebug && cd ..",
-    "apk:release": "cd android && ./gradlew assembleRelease && cd .."
+    "apk:release": "cd android && ./gradlew assembleRelease && cd ..",
+    "eas:update": "eas update --platform android --channel production --message \"OTA update\" --environment production && eas update --platform ios --channel production --message \"OTA update\" --environment production"
   },
   "private": true
 }

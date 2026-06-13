@@ -1,7 +1,7 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Custom hooks from our feature folder
@@ -26,7 +26,7 @@ export default function AccountsScreen() {
   const { colors } = useAppTheme();
 
   // Data Fetching Hook
-  const { accountsList, transactionsList, categoriesList, loadData } = useAccountsData();
+  const { accountsList, transactionsList, categoriesList, refreshing, loadData } = useAccountsData();
 
   // Filters State Hook
   const {
@@ -89,6 +89,32 @@ export default function AccountsScreen() {
     });
   };
 
+  const renderHeaderComponent = () => (
+    <View>
+      <AccountsView
+        accountsList={accountsList}
+        viewMode={viewMode}
+        onAccountPress={handleAccountPress}
+      />
+      <LedgerFilterBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        accounts={accountsList}
+        selectedAccountIds={selectedAccountIds}
+        setSelectedAccountIds={setSelectedAccountIds}
+        categories={categoriesList}
+        selectedCategoryIds={selectedCategoryIds}
+        setSelectedCategoryIds={setSelectedCategoryIds}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
+        activeFilterCount={activeFilterCount}
+        clearAllFilters={clearAllFilters}
+      />
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
       <AccountsHeader
@@ -98,38 +124,20 @@ export default function AccountsScreen() {
         onAddAccountPress={() => setAddAccountVisible(true)}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <AccountsView
-          accountsList={accountsList}
-          viewMode={viewMode}
-          onAccountPress={handleAccountPress}
-        />
-        <LedgerFilterBar
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          dateRange={dateRange}
-          setDateRange={setDateRange}
-          accounts={accountsList}
-          selectedAccountIds={selectedAccountIds}
-          setSelectedAccountIds={setSelectedAccountIds}
-          categories={categoriesList}
-          selectedCategoryIds={selectedCategoryIds}
-          setSelectedCategoryIds={setSelectedCategoryIds}
-          selectedType={selectedType}
-          setSelectedType={setSelectedType}
-          activeFilterCount={activeFilterCount}
-          clearAllFilters={clearAllFilters}
-        />
-        <LedgerSection
-          transactionsList={filteredTransactions}
-          onTransactionPress={handleTransactionPress}
-          activeFilterCount={activeFilterCount}
-          onClearFilters={clearAllFilters}
-        />
-      </ScrollView>
+      <LedgerSection
+        transactionsList={filteredTransactions}
+        onTransactionPress={handleTransactionPress}
+        activeFilterCount={activeFilterCount}
+        onClearFilters={clearAllFilters}
+        ListHeaderComponent={renderHeaderComponent()}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={loadData}
+            tintColor={colors.primary}
+          />
+        }
+      />
 
       <AddAccountModal
         visible={addAccountVisible}
@@ -148,4 +156,3 @@ export default function AccountsScreen() {
     </SafeAreaView>
   );
 }
-

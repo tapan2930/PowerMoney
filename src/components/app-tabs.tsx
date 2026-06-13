@@ -8,6 +8,7 @@ export default function AppTabs() {
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
+      rippleColor={colors.primary + '20'}
       labelStyle={{ selected: { color: colors.primary } }}
       iconColor={{
         selected: colors.primary

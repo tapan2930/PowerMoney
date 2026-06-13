@@ -55,7 +55,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           label="Account Type"
           value={newAccType}
           options={accountTypeOptions}
-          onSelect={setNewAccType}
+          onSelect={(key) => setNewAccType(key as 'bank' | 'credit_card' | 'cash' | 'savings' | 'investment' | 'other')}
           placeholder="Select account type"
         />
 

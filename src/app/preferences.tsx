@@ -7,8 +7,10 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { ModelTier, useAppStore } from '@/stores/useAppStore';
 import { restoreBackupFromCloud, uploadBackupToCloud, exportLocalBackup, importLocalBackup } from '@/utils/backup';
 import { Haptics } from '@/utils/haptics';
+import { getModelFileName } from '@/utils/modelDownloader';
 import { Ionicons } from '@expo/vector-icons';
 import { eq, sql } from 'drizzle-orm';
+import * as FileSystem from 'expo-file-system/legacy';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -187,7 +189,29 @@ export default function PreferencesScreen() {
     try {
       await db.update(settings).set({ value: tier || 'none' }).where(eq(settings.key, 'llm_tier'));
       setLlmModelTier(tier);
-      setLlmStatus(tier ? 'not_downloaded' : 'idle');
+      
+      if (tier) {
+        const fileName = getModelFileName(tier);
+        const modelPath = `${FileSystem.documentDirectory}models/${fileName}`;
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(modelPath);
+          if (fileInfo.exists && fileInfo.size && fileInfo.size > 10 * 1024 * 1024) {
+            setLlmStatus('ready');
+          } else {
+            if (fileInfo.exists) {
+              console.log('Local model file is too small (corrupted/incomplete), deleting...');
+              await FileSystem.deleteAsync(modelPath, { idempotent: true });
+            }
+            setLlmStatus('not_downloaded');
+          }
+        } catch (fsError) {
+          console.warn('Error checking model weights:', fsError);
+          setLlmStatus('not_downloaded');
+        }
+      } else {
+        setLlmStatus('idle');
+      }
+
       Haptics.impact('medium');
       CustomAlert.alert('AI Settings Updated', `Offline model tier changed to: ${tier || 'None'}`);
     } catch (e) {

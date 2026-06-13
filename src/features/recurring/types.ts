@@ -13,6 +13,7 @@ export interface RecurringTransaction {
   frequency: RecurrenceFrequency;
   interval: number;
   startDate: string;
+  preferredTime: string | null;
   endDate: string | null;
   maxOccurrences: number | null;
   completedOccurrences: number;
@@ -42,6 +43,7 @@ export interface RecurringFormData {
   frequency: RecurrenceFrequency;
   interval: string;
   startDate: string;
+  startTime: string; // HH:mm format
   endDate: string;
   hasEndDate: boolean;
   hasMaxOccurrences: boolean;

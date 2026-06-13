@@ -56,6 +56,22 @@ try {
       console.log('recurring_transaction_id column already exists or could not be added:', e);
     }
   }
+
+  // Ensure preferred_time column exists in recurring_transactions (wrap in try-catch)
+  try {
+    expoDb.execSync("ALTER TABLE `recurring_transactions` ADD COLUMN `preferred_time` text;");
+    console.log('Safety check: added preferred_time column to recurring_transactions');
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Ensure time column exists in transactions (wrap in try-catch)
+  try {
+    expoDb.execSync("ALTER TABLE `transactions` ADD COLUMN `time` text;");
+    console.log('Safety check: added time column to transactions');
+  } catch (e) {
+    // Column already exists
+  }
 } catch (e) {
   console.error('Error in database schema safety check:', e);
 }

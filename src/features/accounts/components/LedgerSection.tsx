@@ -8,6 +8,7 @@ import React, { useCallback } from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
 import { styles } from '../styles/accounts.styles';
 import { TransactionItem } from '../types';
+import { formatTimeWithAt } from '@/utils/date';
 
 const AnyFlashList = FlashList as any;
 
@@ -16,6 +17,8 @@ interface LedgerSectionProps {
   onTransactionPress?: (transaction: TransactionItem) => void;
   activeFilterCount?: number;
   onClearFilters?: () => void;
+  ListHeaderComponent?: React.ReactElement;
+  refreshControl?: React.ReactElement;
 }
 
 export const LedgerSection: React.FC<LedgerSectionProps> = ({
@@ -23,6 +26,8 @@ export const LedgerSection: React.FC<LedgerSectionProps> = ({
   onTransactionPress,
   activeFilterCount = 0,
   onClearFilters,
+  ListHeaderComponent,
+  refreshControl,
 }) => {
   const { colors } = useAppTheme();
   const { currency } = useAppStore();
@@ -46,7 +51,9 @@ export const LedgerSection: React.FC<LedgerSectionProps> = ({
             <Text style={[styles.txMerchant, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">
               {tx.merchant || tx.description || 'Transaction'}
             </Text>
-            <Text style={[styles.txDate, { color: colors.textSecondary }]}>{tx.date}</Text>
+            <Text style={[styles.txDate, { color: colors.textSecondary }]}>
+              {tx.date}{formatTimeWithAt(tx.time)}
+            </Text>
           </View>
         </View>
         <AmountDisplay amount={tx.amount} type={tx.type} currency={currency} style={styles.txAmount} />
@@ -56,8 +63,9 @@ export const LedgerSection: React.FC<LedgerSectionProps> = ({
 
   const keyExtractor = useCallback((tx: TransactionItem) => tx.id, []);
 
-  return (
-    <View style={styles.ledgerSection}>
+  const renderHeader = () => (
+    <View>
+      {ListHeaderComponent}
       <View style={styles.ledgerHeader}>
         <Text style={[styles.ledgerTitle, { color: colors.text }]}>Transactions</Text>
         <Button
@@ -69,41 +77,47 @@ export const LedgerSection: React.FC<LedgerSectionProps> = ({
           accessibilityRole="button"
         />
       </View>
+    </View>
+  );
 
-      {transactionsList.length === 0 ? (
-        <Card style={styles.emptyCard} padding={24}>
-          <Ionicons
-            name={activeFilterCount > 0 ? 'filter-outline' : 'list-sharp'}
-            size={40}
-            color={colors.textSecondary + '60'}
-          />
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            {activeFilterCount > 0
-              ? 'No transactions found matching your filters.'
-              : 'No ledger entries recorded.'}
-          </Text>
-          {activeFilterCount > 0 && onClearFilters && (
-            <Button
-              label="Clear Filters"
-              onPress={onClearFilters}
-              size="sm"
-              variant="outline"
-              style={localStyles.clearFiltersBtn}
-              accessibilityLabel="Clear all active filters"
-              accessibilityRole="button"
-            />
-          )}
-        </Card>
-      ) : (
-        <AnyFlashList
-          data={transactionsList}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          estimatedItemSize={70}
-          scrollEnabled={false}
+  const renderEmpty = () => (
+    <Card style={styles.emptyCard} padding={24}>
+      <Ionicons
+        name={activeFilterCount > 0 ? 'filter-outline' : 'list-sharp'}
+        size={40}
+        color={colors.textSecondary + '60'}
+      />
+      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+        {activeFilterCount > 0
+          ? 'No transactions found matching your filters.'
+          : 'No ledger entries recorded.'}
+      </Text>
+      {activeFilterCount > 0 && onClearFilters && (
+        <Button
+          label="Clear Filters"
+          onPress={onClearFilters}
+          size="sm"
+          variant="outline"
+          style={localStyles.clearFiltersBtn}
+          accessibilityLabel="Clear all active filters"
+          accessibilityRole="button"
         />
       )}
-    </View>
+    </Card>
+  );
+
+  return (
+    <AnyFlashList
+      data={transactionsList}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      estimatedItemSize={70}
+      ListHeaderComponent={renderHeader}
+      ListEmptyComponent={renderEmpty}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      refreshControl={refreshControl}
+    />
   );
 };
 
@@ -112,4 +126,3 @@ const localStyles = StyleSheet.create({
     marginTop: 12,
   },
 });
-

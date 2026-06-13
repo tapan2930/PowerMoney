@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text } from 'react-native';
 import { BottomSheet, BottomSheetScrollView, Button } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Account } from '../types';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { styles } from '../styles/accounts.styles';
+import { Account } from '../types';
 
 interface SourceAccountSelectModalProps {
   visible: boolean;
@@ -23,7 +23,7 @@ export const SourceAccountSelectModal: React.FC<SourceAccountSelectModalProps> =
   const { colors } = useAppTheme();
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} height="50%">
+    <BottomSheet visible={visible} onClose={onClose}>
       <BottomSheetScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
         <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
         <View style={styles.optionsRow}>

@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text } from 'react-native';
 import { BottomSheet, BottomSheetScrollView, Button } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Category } from '../types';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { styles } from '../styles/accounts.styles';
+import { Category } from '../types';
 
 interface CategorySelectModalProps {
   visible: boolean;

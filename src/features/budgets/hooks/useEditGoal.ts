@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/db';
 import { goals } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -15,6 +15,13 @@ export function useEditGoal({ goal, onSuccess }: UseEditGoalProps) {
   const [targetAmount, setTargetAmount] = useState(goal?.targetAmount?.toString() ?? '');
   const [currentAmount, setCurrentAmount] = useState(goal?.currentAmount?.toString() ?? '');
   const [deadline, setDeadline] = useState(goal?.deadline ?? '');
+
+  useEffect(() => {
+    setName(goal?.name ?? '');
+    setTargetAmount(goal?.targetAmount?.toString() ?? '');
+    setCurrentAmount(goal?.currentAmount?.toString() ?? '');
+    setDeadline(goal?.deadline ?? '');
+  }, [goal]);
 
   const handleUpdateGoal = async () => {
     if (!goal || !name) return;

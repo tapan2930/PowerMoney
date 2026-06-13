@@ -195,7 +195,7 @@ export function FilterDateSection({
               <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Select Start Date</Text>
                 <Pressable onPress={() => setShowStartPicker(false)} style={styles.doneButton}>
-                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Done</Text>
+                  <Text style={[styles.doneText, { color: colors.primary }]}>Done</Text>
                 </Pressable>
               </View>
               <DateTimePicker
@@ -232,7 +232,7 @@ export function FilterDateSection({
               <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Select End Date</Text>
                 <Pressable onPress={() => setShowEndPicker(false)} style={styles.doneButton}>
-                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Done</Text>
+                  <Text style={[styles.doneText, { color: colors.primary }]}>Done</Text>
                 </Pressable>
               </View>
               <DateTimePicker
@@ -353,5 +353,9 @@ const styles = StyleSheet.create({
   doneButton: {
     paddingVertical: 4,
     paddingHorizontal: 8,
+  },
+  doneText: {
+    fontWeight: '700',
+    fontSize: 16,
   },
 });

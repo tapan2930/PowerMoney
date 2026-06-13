@@ -5,7 +5,8 @@ import {
   SegmentedControl,
   SelectField,
   Switch,
-  TextInput
+  TextInput,
+  TimePickerField
 } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { db } from '@/db';
@@ -183,6 +184,13 @@ export default function AddRecurringTransactionScreen() {
             label="Start Date"
             value={formData.startDate}
             onChange={(val) => updateField('startDate', val)}
+          />
+
+          {/* Preferred Time */}
+          <TimePickerField
+            label="Preferred Time"
+            value={formData.startTime}
+            onChange={(val) => updateField('startTime', val)}
           />
 
           {/* Frequency & Interval Stepper */}

@@ -19,12 +19,12 @@ export function useAddBudget({ categoriesList, onSuccess }: UseAddBudgetProps) {
       const amt = parseFloat(amount);
       if (!name || isNaN(amt) || amt <= 0) return;
 
-      const finalCategoryId = categoryId || (categoriesList.length > 0 ? categoriesList[0].id : null);
+      const finalCategoryId = categoryId || null;
 
       await db.insert(budgets).values({
         name,
         amount: amt,
-        categoryId: finalCategoryId || null,
+        categoryId: finalCategoryId,
         period,
         isActive: true,
       });
@@ -44,7 +44,7 @@ export function useAddBudget({ categoriesList, onSuccess }: UseAddBudgetProps) {
     setName,
     amount,
     setAmount,
-    categoryId: categoryId || (categoriesList.length > 0 ? categoriesList[0].id : ''),
+    categoryId,
     setCategoryId,
     period,
     setPeriod,

@@ -16,6 +16,7 @@ export interface TransactionItem {
   description: string | null;
   merchant: string | null;
   date: string;
+  time: string | null;
   accountId: string;
   categoryId: string | null;
   categoryName: string | null;
